@@ -49,7 +49,7 @@
   .note .num{flex:none; width:20px; height:20px; border-radius:50%; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;}
   .note .body{flex:1; min-width:0;}
   .note .txt{font-size:13px; line-height:1.45; word-wrap:break-word; unicode-bidi:plaintext;}
-  .note.st-fixed .txt, .note.st-canceled .txt{color:var(--muted); text-decoration:line-through;}
+  .note.st-fixed .txt{color:var(--muted); text-decoration:line-through;}
   .note .meta{font-size:11px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;}
   .note .meta .pdot{width:8px; height:8px; border-radius:50%; display:inline-block;}
   .note .meta .assign{cursor:pointer; display:inline-flex; align-items:center; gap:5px;}
@@ -57,8 +57,6 @@
   .assign-sel{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:6px; background:var(--panel);}
   .note .meta .st{font-weight:500;}
   .note .st.fixed{color:var(--done);}
-  .note .st.canceled{color:var(--muted);}
-  .note .st.question{color:var(--amber);}
   .note .tag{display:inline-block; font-size:10px; color:var(--muted); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:0 5px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .note .acts{flex:none; display:flex; gap:0;}
   .note .acts button{border:none; background:none; padding:2px 3px; font-size:13px; color:var(--muted); cursor:pointer; font-family:inherit; line-height:1;}
@@ -151,6 +149,8 @@ Office.onReady(info => {
     if (!n.pinNum) n.pinNum = ++mx;
     if (!n.uid) n.uid = 'm' + n.ts;
     if (!n.status) n.status = n.done ? 'fixed' : 'open';
+    if (n.status === 'canceled') n.status = 'fixed';
+    if (n.status === 'question') n.status = 'open';
     delete n.done;
     if (n.person === undefined) n.person = '';
     if (n.hidden === undefined) n.hidden = false;
@@ -172,8 +172,6 @@ function ensureColor(name){
   return people[name];
 }
 function personColor(n){
-  if (n.status === 'fixed' || n.status === 'canceled') return PIN_GREY;
-  if (n.status === 'question') return PIN_AMBER;
   return n.person ? ensureColor(n.person) : SELF;
 }
 function persistPeople(){
@@ -368,14 +366,14 @@ async function placePinImage(note){
 function matchesFilter(n){ return !filterP || n.person === filterP; }
 
 async function maybePlace(note){
-  if (note.hidden) return;
+  if (note.hidden || note.status === 'fixed') return;
   if (matchesFilter(note)){ note.filterHidden = false; await placePinImage(note); }
   else note.filterHidden = true;
 }
 
 async function applyFilterPins(){
   for (const n of notes){
-    if (n.hidden) continue;
+    if (n.hidden || n.status === 'fixed') continue;
     if (matchesFilter(n) && n.filterHidden){
       n.filterHidden = false;
       await placePinImage(n);
@@ -387,12 +385,12 @@ async function applyFilterPins(){
 }
 
 async function recolorPin(note){
-  if (note.hidden || note.filterHidden) return;
+  if (note.hidden || note.filterHidden || note.status === 'fixed') return;
   await removePinImage(note);
   await placePinImage(note);
 }
 async function clearAllPins(){
-  const affected = notes.filter(n => !n.hidden && !n.filterHidden);
+  const affected = notes.filter(n => !n.hidden && !n.filterHidden && n.status === 'open');
   if (!affected.length){ toast('No pins on the slides'); return; }
   try{
     for (const n of affected){
@@ -412,7 +410,7 @@ let reconBusy = false;
 async function reconcilePins(){
   if (!ready || reconBusy) return;
   if (Date.now() - lastOp < 2500) return;
-  const cands = notes.filter(n => !n.hidden && !n.filterHidden && Date.now() - n.ts > 5000);
+  const cands = notes.filter(n => n.status === 'open' && !n.hidden && !n.filterHidden && Date.now() - n.ts > 5000);
   if (!cands.length) return;
   reconBusy = true;
   try{
@@ -494,8 +492,15 @@ $('addbtn').addEventListener('click', addNote);
 $('noteinput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
 
 /* ================= list ================= */
-const STATUS_ORDER = ['open','fixed','canceled','question'];
-const STATUS_LABEL = {open:'', fixed:'✓ fixed', canceled:'✗ canceled', question:'???'};
+const STATUS_LABEL = {open:'', fixed:'👍 fixed'};
+
+async function syncPinForStatus(n){
+  if (n.status === 'fixed'){
+    if (!n.hidden && !n.filterHidden) await removePinImage(n);
+  } else {
+    await maybePlace(n);
+  }
+}
 
 function drawNotes(){
   const el = $('notes');
@@ -528,8 +533,8 @@ function drawNotes(){
       row.innerHTML = '<div class="num"></div>' +
         '<div class="body"><div class="txt"></div><div class="meta"></div></div>' +
         '<div class="acts">' +
-          '<button class="eye" title="Hide/show the pin on the slide">👁</button>' +
-          '<button class="st-btn" title="Cycle status: open → fixed → canceled → ???">✓</button>' +
+          (n.status === 'open' ? '<button class="eye" title="Hide/show the pin on the slide">👁</button>' : '') +
+          '<button class="st-btn" title="' + (n.status === 'fixed' ? 'Reopen — the pin returns' : 'Mark fixed — the pin leaves the slide') + '">👍</button>' +
           '<button class="del" title="Delete note">✕</button>' +
         '</div>';
       const num = row.querySelector('.num');
@@ -588,9 +593,9 @@ function drawNotes(){
         row.querySelector('.body').appendChild(tag);
       }
       const eye = row.querySelector('.eye');
-      if (n.hidden) eye.classList.add('off');
+      if (eye && n.hidden) eye.classList.add('off');
       row.addEventListener('click', () => { if (n.hidden || n.filterHidden) goTo(n.slideId); else selectPin(n); });
-      eye.addEventListener('click', async e => {
+      if (eye) eye.addEventListener('click', async e => {
         e.stopPropagation();
         if (n.hidden){ n.hidden = false; await placePinImage(n); pushUndo({type:'show', uid:n.uid}); }
         else { await removePinImage(n); n.hidden = true; pushUndo({type:'hide', uid:n.uid}); }
@@ -598,11 +603,10 @@ function drawNotes(){
       });
       row.querySelector('.st-btn').addEventListener('click', async e => {
         e.stopPropagation();
-        const prev = n.status;
-        n.status = STATUS_ORDER[(STATUS_ORDER.indexOf(n.status) + 1) % STATUS_ORDER.length];
-        pushUndo({type:'status', uid:n.uid, prev});
+        pushUndo({type:'status', uid:n.uid, prev: n.status});
+        n.status = n.status === 'fixed' ? 'open' : 'fixed';
+        await syncPinForStatus(n);
         persist(); drawNotes();
-        await recolorPin(n);
       });
       row.querySelector('.del').addEventListener('click', async e => {
         e.stopPropagation();
@@ -682,7 +686,7 @@ async function undo(){
     }
     else if (e.type === 'status'){
       const n = findNote(e.uid);
-      if (n){ n.status = e.prev; await recolorPin(n); }
+      if (n){ n.status = e.prev; await syncPinForStatus(n); }
     }
     else if (e.type === 'hide'){
       const n = findNote(e.uid);
