@@ -20,14 +20,12 @@
   header .brand{font-weight:700; font-size:16px;}
   header .brand span{color:var(--pin);}
   header .sub{font-size:11px; color:var(--muted); margin-top:2px;}
-  #langBtn{position:absolute; top:12px; inset-inline-end:14px; font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:3px 8px; cursor:pointer; color:var(--muted);}
-  #langBtn:hover{color:var(--ink); border-color:#C9C5BC;}
 
-  #mebar{display:none; align-items:center; gap:6px; padding:7px 14px; background:var(--pin-soft); border-bottom:1px solid var(--line); font-size:12px; flex-wrap:wrap;}
+  #mebar{display:none; align-items:center; gap:6px; padding:7px 14px; background:var(--panel); border-bottom:1px solid var(--line); font-size:12px; flex-wrap:wrap;}
+  #mebar .pdot{width:9px; height:9px; border-radius:50%; display:inline-block; flex:none;}
   #mebar.on{display:flex;}
   #mebar .mine-btn{font-family:inherit; font-size:11px; font-weight:500; border:1px solid var(--pin); color:var(--pin); background:var(--panel); border-radius:8px; padding:2px 8px; cursor:pointer;}
   #mebar .mine-btn:hover{background:var(--pin); color:#fff;}
-  #mebar .chg{font-size:10px; color:var(--muted); cursor:pointer; text-decoration:underline;}
   #mebar .who-chip{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:2px 9px; cursor:pointer; background:var(--panel);}
   #mebar .who-chip:hover{border-color:var(--pin);}
 
@@ -93,7 +91,6 @@
 <header>
   <div class="brand">Cri<span>Tick</span></div>
   <div class="sub" id="sub"></div>
-  <button id="langBtn"></button>
 </header>
 
 <div id="mebar"></div>
@@ -192,62 +189,11 @@ const STR = {
     tUndone: 'Undone',
     tNothingUndo: 'Nothing to undo',
     tCantUndo: 'Could not undo'
-  },
-  he: {
-    sub: 'התיקונים נשמרים בתוך המצגת',
-    notPpt: 'CriTick פועל בתוך PowerPoint',
-    anchorDefault: 'פין ממוספר יתווסף לשקופית — גררו אותו למקום',
-    anchorAttached: 'מוצמד אל: ',
-    anchorPin: 'פין נבחר',
-    placeholder: 'כתבו את התיקון… (Enter להוספה)',
-    addSlide: 'הוספה לשקופית הזו',
-    addObject: 'הוספת הערה על האובייקט',
-    myself: 'אני',
-    addPerson: 'הוספת שם',
-    personName: 'שם',
-    filterLabel: 'הצגה',
-    everyone: 'כולם',
-    emptyNew: 'כתבו תיקון ולחצו Enter — ואז גררו את הפין למקומו.',
-    emptyFilter: 'אין הערות בסינון הזה.',
-    slideWord: 'שקופית',
-    slideMeta: 'שקופית',
-    deletedSlide: 'שקופית שנמחקה',
-    fixedLabel: '👍 טופל',
-    reassignTip: 'לחיצה לשיוך מחדש',
-    eyeTip: 'הסתרה/הצגה של הפין בשקופית',
-    fixTip: 'סימון כטופל — הפין יוסר מהשקופית',
-    reopenTip: 'פתיחה מחדש — הפין יחזור',
-    delTip: 'מחיקת הערה',
-    editTip: 'לחיצה כפולה לעריכה',
-    clearPins: 'הסרת הפינים מהשקופיות',
-    clearPinsTip: 'מחיקת כל הפינים מהשקופיות (ההערות נשמרות)',
-    saved: 'נשמר בקובץ · שמרו את המצגת כדי לשמור',
-    open: 'פתוחות',
-    fixedWord: 'טופלו',
-    forYou: n => n + ' הערות פתוחות עבורך',
-    nothingForYou: 'אין הערות פתוחות עבורך',
-    showMine: 'הצג רק שלי',
-    change: 'החלפה',
-    whoami: 'מי את/ה?',
-    goSlide: 'מעבר לשקופית',
-    tClickSlide: 'לחצו קודם על שקופית',
-    tCouldNotAdd: 'לא הצלחנו להוסיף — נסו שוב',
-    tNoPins: 'אין פינים בשקופיות',
-    tPinsRemoved: n => n + ' פינים הוסרו — ההערות נשמרו',
-    tCantRemove: 'לא הצלחנו להסיר את הפינים',
-    tGoneOne: 'ההערה נמחקה יחד עם הפין',
-    tGoneMany: n => n + ' הערות נמחקו יחד עם הפינים',
-    tUndone: 'בוטל',
-    tNothingUndo: 'אין מה לבטל',
-    tCantUndo: 'לא הצלחנו לבטל'
   }
 };
 function t(key){ return STR[lang][key]; }
 
 function applyLang(){
-  document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
-  $('langBtn').textContent = lang === 'he' ? 'EN' : 'עברית';
   $('sub').textContent = t('sub');
   $('noteinput').placeholder = t('placeholder');
   $('filterLabel').textContent = t('filterLabel');
@@ -258,15 +204,9 @@ function applyLang(){
   drawNotes();
   updateAnchor();
 }
-$('langBtn').addEventListener('click', () => {
-  lang = lang === 'he' ? 'en' : 'he';
-  try{ localStorage.setItem('critick-lang', lang); }catch(e){}
-  applyLang();
-});
 
 /* ================= boot ================= */
 Office.onReady(info => {
-  try{ lang = localStorage.getItem('critick-lang') || 'en'; }catch(e){}
   try{ me = localStorage.getItem('critick-me') || ''; }catch(e){}
   if (info.host !== Office.HostType.PowerPoint){
     applyLang();
@@ -326,6 +266,13 @@ function drawMeBar(){
   }
   const mine = notes.filter(n => n.person === me && n.status === 'open').length;
   bar.classList.add('on');
+  const wave = document.createElement('span');
+  wave.textContent = '👋';
+  bar.appendChild(wave);
+  const d = document.createElement('span');
+  d.className = 'pdot';
+  d.style.background = ensureColor(me);
+  bar.appendChild(d);
   const txt = document.createElement('span');
   txt.textContent = me + ' · ' + (mine ? t('forYou')(mine) : t('nothingForYou'));
   bar.appendChild(txt);
@@ -342,15 +289,6 @@ function drawMeBar(){
     });
     bar.appendChild(btn);
   }
-  const chg = document.createElement('span');
-  chg.className = 'chg';
-  chg.textContent = t('change');
-  chg.addEventListener('click', () => {
-    me = '';
-    try{ localStorage.removeItem('critick-me'); }catch(e){}
-    drawMeBar();
-  });
-  bar.appendChild(chg);
 }
 
 /* ================= people & colors ================= */
