@@ -112,6 +112,7 @@
 
 <footer>
   <div class="row">
+    <button id="copyClaude"></button>
     <button id="clearPins"></button>
   </div>
   <div id="savedflag"></div>
@@ -188,7 +189,11 @@ const STR = {
     tGoneMany: n => n + ' notes deleted with their pins',
     tUndone: 'Undone',
     tNothingUndo: 'Nothing to undo',
-    tCantUndo: 'Could not undo'
+    tCantUndo: 'Could not undo',
+    copyClaude: 'Copy for Claude',
+    copyClaudeTip: 'Copy all open corrections as instructions to paste into the Claude pane',
+    tNothingOpen: 'No open corrections',
+    tClaudeCopied: 'Copied — paste into the Claude pane'
   }
 };
 function t(key){ return STR[lang][key]; }
@@ -199,6 +204,8 @@ function applyLang(){
   $('filterLabel').textContent = t('filterLabel');
   $('clearPins').textContent = t('clearPins');
   $('clearPins').title = t('clearPinsTip');
+  $('copyClaude').textContent = t('copyClaude');
+  $('copyClaude').title = t('copyClaudeTip');
   drawPeople();
   drawMeBar();
   drawNotes();
@@ -917,6 +924,40 @@ function persist(){
     });
   }catch(e){}
 }
+
+/* ================= copy for Claude ================= */
+function claudePrompt(){
+  const open = notes.filter(n => n.status === 'open');
+  const groups = {};
+  open.forEach(n => {
+    const p = slidePos[n.slideId] || 0;
+    (groups[p] = groups[p] || []).push(n);
+  });
+  let out = 'Please apply the following corrections to this presentation. ';
+  out += 'Go slide by slide and make only the changes listed. ';
+  out += 'Ignore the small numbered circle images named CriTickPin-* \u2014 do not move, edit, or delete them. ';
+  out += 'If a correction is ambiguous or impossible, skip it and say so at the end.\n';
+  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
+    out += '\nSlide ' + (p || '(unknown)') + ':\n';
+    groups[p].forEach(n => {
+      out += '- ' + (n.shapeName ? 'On the object named "' + n.shapeName + '": ' : '') + n.text + '\n';
+    });
+  });
+  out += '\nWhen finished, list what you changed and anything you skipped.';
+  return out;
+}
+$('copyClaude').addEventListener('click', async () => {
+  const open = notes.filter(n => n.status === 'open');
+  if (!open.length){ toast(t('tNothingOpen')); return; }
+  await refreshSlideMap();
+  const txt = claudePrompt();
+  try{ await navigator.clipboard.writeText(txt); toast(t('tClaudeCopied')); }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = txt;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast(t('tClaudeCopied'));
+  }
+});
 
 /* ================= toast ================= */
 let toastT = null;
