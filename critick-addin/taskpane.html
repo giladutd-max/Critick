@@ -82,6 +82,11 @@
   footer button:hover{border-color:#C9C5BC;}
   #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:6px; min-height:13px;}
 
+  #claudebox{display:none; position:fixed; inset:0; background:rgba(28,27,26,.45); z-index:50; padding:20px 14px; }
+  #claudebox.on{display:flex; flex-direction:column; gap:8px;}
+  #claudebox .inner{background:var(--panel); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;}
+  #claudebox textarea{flex:1; min-height:0; width:100%; font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.5; border:1px solid var(--line); border-radius:8px; padding:8px; resize:none; outline:none; background:var(--bg);}
+  #claudebox .hint{font-size:11px; color:var(--muted); text-align:center;}
   #toast{position:fixed; bottom:64px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; font-size:12px; padding:6px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:99; white-space:nowrap;}
   #toast.on{opacity:1;}
 </style>
@@ -117,6 +122,8 @@
   </div>
   <div id="savedflag"></div>
 </footer>
+
+<div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
 
@@ -193,7 +200,8 @@ const STR = {
     copyClaude: 'Copy for Claude',
     copyClaudeTip: 'Copy all open corrections as instructions to paste into the Claude pane',
     tNothingOpen: 'No open corrections',
-    tClaudeCopied: 'Copied — paste into the Claude pane'
+    tClaudeCopied: 'Copied — paste into the Claude pane',
+    copyHint: 'Press ⌘C to copy, then paste into the Claude pane · Esc to close'
   }
 };
 function t(key){ return STR[lang][key]; }
@@ -950,13 +958,22 @@ $('copyClaude').addEventListener('click', async () => {
   const open = notes.filter(n => n.status === 'open');
   if (!open.length){ toast(t('tNothingOpen')); return; }
   await refreshSlideMap();
-  const txt = claudePrompt();
-  try{ await navigator.clipboard.writeText(txt); toast(t('tClaudeCopied')); }
-  catch(e){
-    const ta = document.createElement('textarea'); ta.value = txt;
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-    toast(t('tClaudeCopied'));
+  const box = $('claudebox'), ta = $('claudetext');
+  ta.value = claudePrompt();
+  $('claudehint').textContent = t('copyHint');
+  box.classList.add('on');
+  ta.focus();
+  ta.select();
+  try{ navigator.clipboard.writeText(ta.value).catch(()=>{}); }catch(e){}
+});
+$('claudetext').addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('claudebox').classList.remove('on');
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c'){
+    setTimeout(() => { $('claudebox').classList.remove('on'); toast(t('tClaudeCopied')); }, 150);
   }
+});
+$('claudebox').addEventListener('click', e => {
+  if (e.target === $('claudebox')) $('claudebox').classList.remove('on');
 });
 
 /* ================= toast ================= */
