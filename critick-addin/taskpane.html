@@ -934,7 +934,55 @@ function persist(){
 }
 
 /* ================= copy for Claude ================= */
-function claudePrompt(){
+async function resolveAnchors(openNotes){
+  const res = {};
+  const bySlide = {};
+  openNotes.forEach(n => {
+    if (!n.hidden && !n.filterHidden) (bySlide[n.slideId] = bySlide[n.slideId] || []).push(n);
+  });
+  if (!Object.keys(bySlide).length) return res;
+  try{
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const existing = {};
+      all.items.forEach(sl => { existing[sl.id] = true; });
+      const loaded = {};
+      Object.keys(bySlide).forEach(id => {
+        if (!existing[id]) return;
+        loaded[id] = ctx.presentation.slides.getItem(id);
+        loaded[id].shapes.load('items/name,items/left,items/top,items/width,items/height');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(id => {
+        const items = loaded[id].shapes.items;
+        bySlide[id].forEach(n => {
+          const pin = items.find(x => x.name === 'CriTickPin-' + n.uid);
+          if (!pin) return;
+          const cx = pin.left + pin.width / 2;
+          const cy = pin.top + pin.height / 2;
+          const hits = items.filter(x =>
+            x.name.indexOf('CriTickPin-') !== 0 &&
+            cx >= x.left && cx <= x.left + x.width &&
+            cy >= x.top && cy <= x.top + x.height);
+          let obj = null;
+          if (hits.length){
+            hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
+            obj = hits[0].name;
+          }
+          const W = 960, H = 540;
+          const col = cx < W / 3 ? 'left' : (cx > 2 * W / 3 ? 'right' : 'center');
+          const rowp = cy < H / 3 ? 'top' : (cy > 2 * H / 3 ? 'bottom' : 'middle');
+          res[n.uid] = {obj: obj, region: rowp + ' ' + col};
+        });
+      });
+    });
+  }catch(e){}
+  return res;
+}
+
+function claudePrompt(anchors){
   const open = notes.filter(n => n.status === 'open');
   const groups = {};
   open.forEach(n => {
@@ -948,7 +996,12 @@ function claudePrompt(){
   Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
     out += '\nSlide ' + (p || '(unknown)') + ':\n';
     groups[p].forEach(n => {
-      out += '- ' + (n.shapeName ? 'On the object named "' + n.shapeName + '": ' : '') + n.text + '\n';
+      const a = anchors[n.uid] || {};
+      let where = '';
+      if (n.shapeName) where = 'On the object named "' + n.shapeName + '": ';
+      else if (a.obj) where = 'On the object named "' + a.obj + '" (the pin sits on it): ';
+      else if (a.region) where = 'In the ' + a.region + ' area of the slide: ';
+      out += '- ' + where + n.text + '\n';
     });
   });
   out += '\nWhen finished, list what you changed and anything you skipped.';
@@ -958,8 +1011,9 @@ $('copyClaude').addEventListener('click', async () => {
   const open = notes.filter(n => n.status === 'open');
   if (!open.length){ toast(t('tNothingOpen')); return; }
   await refreshSlideMap();
+  const anchors = await resolveAnchors(open);
   const box = $('claudebox'), ta = $('claudetext');
-  ta.value = claudePrompt();
+  ta.value = claudePrompt(anchors);
   $('claudehint').textContent = t('copyHint');
   box.classList.add('on');
   ta.focus();
