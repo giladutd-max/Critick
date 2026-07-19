@@ -42,7 +42,7 @@
   #notes{flex:1; overflow-y:auto;}
   .slidehead{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:12px 14px 4px; cursor:pointer;}
   .slidehead:hover{color:var(--pin);}
-  .empty{padding:32px 18px; color:var(--muted); font-size:13px; line-height:1.7; text-align:center;}
+  .empty{padding:12px 14px; color:var(--muted); font-size:12px; line-height:1.5; text-align:center;}
   .note{display:flex; gap:8px; padding:8px 14px; align-items:flex-start; cursor:pointer;}
   .note:hover{background:var(--pin-soft);}
   .note.hl{background:var(--pin-soft); box-shadow:inset 3px 0 0 var(--pin);}
@@ -98,11 +98,6 @@
 
 <footer>
   <div class="row">
-    <button id="undoBtn" title="Undo last action (Cmd+Z)">↶ Undo</button>
-    <button id="copyList">Copy list</button>
-    <button id="dlList">Download .txt</button>
-  </div>
-  <div class="row">
     <button id="clearPins" title="Delete all CriTick pins from the slides (notes stay)">Remove pins from slides</button>
   </div>
   <div id="savedflag"></div>
@@ -113,7 +108,7 @@
 <script>
 const KEY = 'critick-notes';
 const KEY_PEOPLE = 'critick-people';
-const PIN = '#A83254', PIN_GREY = '#8A867E', PIN_AMBER = '#D9A21B';
+const PIN = '#A83254', PIN_GREY = '#8A867E', PIN_AMBER = '#D9A21B', SELF = '#6E6B64';
 const ROSTER = {
   'Gilad':'#A83254','Noa':'#2563EB','Issi':'#0E9F6E','Merav':'#D97706','Daniel':'#7C3AED',
   'Maya':'#DB2777','Adi':'#0891B2','Tsofit':'#65A30D','Michal':'#92400E'
@@ -126,6 +121,7 @@ let ready = false;
 let selPerson = '';
 let filterP = '';
 let undoStack = [];
+let lastOp = 0;
 
 const $ = id => document.getElementById(id);
 
@@ -175,7 +171,7 @@ function ensureColor(name){
 function personColor(n){
   if (n.status === 'fixed' || n.status === 'canceled') return PIN_GREY;
   if (n.status === 'question') return PIN_AMBER;
-  return n.person ? ensureColor(n.person) : PIN;
+  return n.person ? ensureColor(n.person) : SELF;
 }
 function persistPeople(){
   try{
@@ -188,7 +184,7 @@ function drawPeople(){
   el.innerHTML = '';
   const none = document.createElement('button');
   none.className = 'chip' + (selPerson === '' ? ' sel' : '');
-  none.innerHTML = '<span class="dot" style="background:' + PIN + '"></span>No one';
+  none.innerHTML = '<span class="dot" style="background:' + SELF + '"></span>Myself';
   none.addEventListener('click', () => { selPerson = ''; drawPeople(); });
   el.appendChild(none);
   Object.keys(people).forEach(name => {
@@ -255,6 +251,7 @@ async function updateAnchor(){
         return;
       }
       clearHighlight();
+      reconcilePins();
       if (shapes.items.length){
         const nm = shapes.items[0].name;
         $('anchor').innerHTML = 'Attached to: <b></b>';
@@ -306,6 +303,7 @@ function pinImageBase64(num, color){
   return c.toDataURL('image/png').split(',')[1];
 }
 function insertPinImage(num, color, left, top){
+  lastOp = Date.now();
   return new Promise(resolve => {
     Office.context.document.setSelectedDataAsync(pinImageBase64(num, color), {
       coercionType: Office.CoercionType.Image,
@@ -336,6 +334,7 @@ async function adoptNewPin(slideId, beforeNames, uid){
 }
 // capture the pin's current position into the note, then delete the image
 async function removePinImage(note){
+  lastOp = Date.now();
   try{
     await PowerPoint.run(async ctx => {
       const slide = ctx.presentation.slides.getItem(note.slideId);
@@ -348,6 +347,7 @@ async function removePinImage(note){
   }catch(e){}
 }
 async function placePinImage(note){
+  lastOp = Date.now();
   try{
     const k = (note.pinNum - 1) % 8;
     const left = (note.pinLeft !== undefined && note.pinLeft !== null) ? note.pinLeft : 14 + k * 30;
@@ -403,6 +403,54 @@ async function clearAllPins(){
 }
 $('clearPins').addEventListener('click', clearAllPins);
 
+/* ================= pin-deleted -> note-deleted ================= */
+let reconBusy = false;
+async function reconcilePins(){
+  if (!ready || reconBusy) return;
+  if (Date.now() - lastOp < 2500) return;
+  const cands = notes.filter(n => !n.hidden && !n.filterHidden && Date.now() - n.ts > 5000);
+  if (!cands.length) return;
+  reconBusy = true;
+  try{
+    const bySlide = {};
+    cands.forEach(n => { (bySlide[n.slideId] = bySlide[n.slideId] || []).push(n); });
+    const gone = [];
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const existing = {};
+      all.items.forEach(sl => { existing[sl.id] = true; });
+      const loaded = {};
+      Object.keys(bySlide).forEach(id => {
+        if (!existing[id]) return;
+        loaded[id] = ctx.presentation.slides.getItem(id);
+        loaded[id].shapes.load('items/name');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(id => {
+        const names = loaded[id].shapes.items.map(x => x.name);
+        bySlide[id].forEach(n => {
+          if (names.indexOf('CriTickPin-' + n.uid) === -1) gone.push(n);
+        });
+      });
+    });
+    if (gone.length){
+      gone.forEach(n => {
+        const idx = notes.indexOf(n);
+        if (idx > -1){
+          notes.splice(idx, 1);
+          pushUndo({type:'delete', note: JSON.parse(JSON.stringify(n))});
+        }
+      });
+      persist();
+      drawNotes();
+      toast(gone.length === 1 ? 'Note deleted with its pin' : gone.length + ' notes deleted with their pins');
+    }
+  }catch(e){}
+  reconBusy = false;
+}
+
 /* ================= add note ================= */
 async function addNote(){
   const text = $('noteinput').value.trim();
@@ -451,7 +499,7 @@ function drawNotes(){
   if (!visible.length){
     el.innerHTML = '<div class="empty">' + (notes.length
       ? 'No notes for this filter.'
-      : 'Write a correction and press Enter —<br>a numbered pin appears on the slide.<br>Drag it to the exact spot.') + '</div>';
+      : 'Write a correction, press Enter — then drag the pin into place.') + '</div>';
     return;
   }
   const groups = {};
@@ -588,7 +636,6 @@ async function undo(){
     toast('Undone');
   }catch(err){ toast('Could not undo'); }
 }
-$('undoBtn').addEventListener('click', undo);
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z'){
     if (e.target.tagName === 'INPUT' && e.target.value) return;
@@ -608,50 +655,6 @@ function persist(){
     });
   }catch(e){}
 }
-
-/* ================= export ================= */
-function listText(){
-  let out = 'Corrections\n' + new Date().toLocaleDateString() + '\n';
-  const mark = {open:'[ ]', fixed:'[v]', canceled:'[x]', question:'[?]'};
-  const groups = {};
-  notes.forEach(n => {
-    const p = slidePos[n.slideId] || 9999;
-    (groups[p] = groups[p] || []).push(n);
-  });
-  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
-    out += '\nSlide ' + (p === 9999 ? '(deleted)' : p) + '\n';
-    groups[p].forEach(n => {
-      out += '  ' + mark[n.status] + ' ' + n.pinNum + '. '
-        + (n.person ? n.person + ' — ' : '')
-        + (n.shapeName ? '[' + n.shapeName + '] ' : '')
-        + n.text + '\n';
-    });
-  });
-  const open = notes.filter(n => n.status === 'open' || n.status === 'question').length;
-  out += '\n' + notes.length + ' corrections · ' + open + ' still open\n';
-  return out;
-}
-$('copyList').addEventListener('click', async () => {
-  if (!notes.length){ toast('No corrections yet'); return; }
-  await refreshSlideMap();
-  const t = listText();
-  try{ await navigator.clipboard.writeText(t); toast('List copied'); }
-  catch(e){
-    const ta = document.createElement('textarea'); ta.value = t;
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-    toast('List copied');
-  }
-});
-$('dlList').addEventListener('click', async () => {
-  if (!notes.length){ toast('No corrections yet'); return; }
-  await refreshSlideMap();
-  const blob = new Blob([listText()], {type:'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'corrections.txt';
-  a.click();
-  URL.revokeObjectURL(a.href);
-});
 
 /* ================= toast ================= */
 let toastT = null;
