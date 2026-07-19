@@ -26,7 +26,7 @@
   #anchor b{color:var(--pin); font-weight:500;}
   #noteinput{width:100%; font-family:inherit; font-size:14px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; background:var(--bg);}
   #noteinput:focus{border-color:var(--pin);}
-  #people{display:flex; gap:6px; overflow-x:auto; padding:8px 0 2px; scrollbar-width:thin;}
+  #people{display:flex; flex-wrap:wrap; gap:6px; padding:8px 0 2px;}
   .chip{flex:none; display:flex; align-items:center; gap:5px; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:3px 9px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
   .chip .dot{width:9px; height:9px; border-radius:50%; flex:none;}
   .chip.sel{border-color:var(--ink); background:var(--bg); font-weight:500;}
@@ -155,9 +155,10 @@ Office.onReady(info => {
     delete n.done;
     if (n.person === undefined) n.person = '';
     if (n.hidden === undefined) n.hidden = false;
+    if (n.filterHidden === undefined) n.filterHidden = false;
   });
   drawPeople();
-  refreshSlideMap().then(drawNotes);
+  refreshSlideMap().then(async () => { drawNotes(); await applyFilterPins(); });
   watchSelection();
 });
 
@@ -231,7 +232,7 @@ function drawFilter(){
   });
   sel.value = cur;
 }
-$('filterPerson').addEventListener('change', e => { filterP = e.target.value; drawNotes(); });
+$('filterPerson').addEventListener('change', async e => { filterP = e.target.value; drawNotes(); await applyFilterPins(); persist(); });
 
 /* ================= selection awareness ================= */
 function watchSelection(){
@@ -360,13 +361,34 @@ async function placePinImage(note){
     await adoptNewPin(note.slideId, before, note.uid);
   }catch(e){}
 }
-async function recolorPin(note){
+function matchesFilter(n){ return !filterP || n.person === filterP; }
+
+async function maybePlace(note){
   if (note.hidden) return;
+  if (matchesFilter(note)){ note.filterHidden = false; await placePinImage(note); }
+  else note.filterHidden = true;
+}
+
+async function applyFilterPins(){
+  for (const n of notes){
+    if (n.hidden) continue;
+    if (matchesFilter(n) && n.filterHidden){
+      n.filterHidden = false;
+      await placePinImage(n);
+    } else if (!matchesFilter(n) && !n.filterHidden){
+      await removePinImage(n);
+      n.filterHidden = true;
+    }
+  }
+}
+
+async function recolorPin(note){
+  if (note.hidden || note.filterHidden) return;
   await removePinImage(note);
   await placePinImage(note);
 }
 async function clearAllPins(){
-  const affected = notes.filter(n => !n.hidden);
+  const affected = notes.filter(n => !n.hidden && !n.filterHidden);
   if (!affected.length){ toast('No pins on the slides'); return; }
   try{
     for (const n of affected){
@@ -540,7 +562,7 @@ async function undo(){
     }
     else if (e.type === 'delete'){
       notes.push(e.note);
-      if (!e.note.hidden) await placePinImage(e.note);
+      await maybePlace(e.note);
     }
     else if (e.type === 'status'){
       const n = findNote(e.uid);
@@ -548,7 +570,7 @@ async function undo(){
     }
     else if (e.type === 'hide'){
       const n = findNote(e.uid);
-      if (n){ n.hidden = false; await placePinImage(n); }
+      if (n){ n.hidden = false; await maybePlace(n); }
     }
     else if (e.type === 'show'){
       const n = findNote(e.uid);
@@ -557,7 +579,7 @@ async function undo(){
     else if (e.type === 'clearAll'){
       for (const uid of e.uids){
         const n = findNote(uid);
-        if (n){ n.hidden = false; await placePinImage(n); }
+        if (n){ n.hidden = false; await maybePlace(n); }
       }
     }
     persist();
