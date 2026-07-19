@@ -10,16 +10,26 @@
 <style>
   :root{
     --bg:#FAF9F6; --panel:#FFFFFF; --ink:#1C1B1A; --muted:#8A867E; --line:#E7E4DD;
-    --pin:#A83254; --pin-soft:#F7E6EC; --done:#2E7D5B; --done-soft:#E4F0EA; --amber:#B45309;
+    --pin:#A83254; --pin-soft:#F7E6EC; --done:#2E7D5B; --done-soft:#E4F0EA;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{height:100%;}
   body{font-family:'Heebo',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; display:flex; flex-direction:column;}
 
-  header{padding:12px 14px 10px; background:var(--panel); border-bottom:1px solid var(--line);}
+  header{padding:12px 14px 10px; background:var(--panel); border-bottom:1px solid var(--line); position:relative;}
   header .brand{font-weight:700; font-size:16px;}
   header .brand span{color:var(--pin);}
   header .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  #langBtn{position:absolute; top:12px; inset-inline-end:14px; font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:3px 8px; cursor:pointer; color:var(--muted);}
+  #langBtn:hover{color:var(--ink); border-color:#C9C5BC;}
+
+  #mebar{display:none; align-items:center; gap:6px; padding:7px 14px; background:var(--pin-soft); border-bottom:1px solid var(--line); font-size:12px; flex-wrap:wrap;}
+  #mebar.on{display:flex;}
+  #mebar .mine-btn{font-family:inherit; font-size:11px; font-weight:500; border:1px solid var(--pin); color:var(--pin); background:var(--panel); border-radius:8px; padding:2px 8px; cursor:pointer;}
+  #mebar .mine-btn:hover{background:var(--pin); color:#fff;}
+  #mebar .chg{font-size:10px; color:var(--muted); cursor:pointer; text-decoration:underline;}
+  #mebar .who-chip{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:2px 9px; cursor:pointer; background:var(--panel);}
+  #mebar .who-chip:hover{border-color:var(--pin);}
 
   #composerbox{padding:12px 14px 10px; background:var(--panel); border-bottom:1px solid var(--line);}
   #anchor{font-size:11px; color:var(--muted); margin-bottom:6px; min-height:15px;}
@@ -37,7 +47,9 @@
 
   #filterbar{display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
   #filterbar label{font-size:11px; color:var(--muted);}
-  #filterPerson{flex:1; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:4px 6px; background:var(--bg); outline:none;}
+  #filterPerson{flex:1; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:4px 6px; background:var(--bg); outline:none; min-width:0;}
+  #progress{font-size:11px; color:var(--muted); white-space:nowrap;}
+  #progress b{color:var(--done); font-weight:500;}
 
   #notes{flex:1; overflow-y:auto;}
   .slidehead{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:12px 14px 4px; cursor:pointer;}
@@ -50,6 +62,7 @@
   .note .body{flex:1; min-width:0;}
   .note .txt{font-size:13px; line-height:1.45; word-wrap:break-word; unicode-bidi:plaintext;}
   .note.st-fixed .txt{color:var(--muted); text-decoration:line-through;}
+  .txt-edit{width:100%; font-family:inherit; font-size:13px; border:1px solid var(--pin); border-radius:6px; padding:3px 6px; outline:none;}
   .note .meta{font-size:11px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;}
   .note .meta .pdot{width:8px; height:8px; border-radius:50%; display:inline-block;}
   .note .meta .assign{cursor:pointer; display:inline-flex; align-items:center; gap:5px;}
@@ -67,7 +80,6 @@
 
   footer{padding:10px 14px; background:var(--panel); border-top:1px solid var(--line);}
   footer .row{display:flex; gap:8px;}
-  footer .row + .row{margin-top:6px;}
   footer button{flex:1; font-family:inherit; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px; cursor:pointer; color:var(--ink);}
   footer button:hover{border-color:#C9C5BC;}
   #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:6px; min-height:13px;}
@@ -80,26 +92,30 @@
 
 <header>
   <div class="brand">Cri<span>Tick</span></div>
-  <div class="sub">Corrections are saved inside this presentation</div>
+  <div class="sub" id="sub"></div>
+  <button id="langBtn"></button>
 </header>
 
+<div id="mebar"></div>
+
 <div id="composerbox">
-  <div id="anchor">A numbered pin will be added to the slide — drag it into place</div>
-  <input id="noteinput" type="text" dir="auto" placeholder="Write the correction… (Enter to add)">
+  <div id="anchor"></div>
+  <input id="noteinput" type="text" dir="auto">
   <div id="people"></div>
-  <button id="addbtn">Add to this slide</button>
+  <button id="addbtn"></button>
 </div>
 
 <div id="filterbar">
-  <label for="filterPerson">Show</label>
-  <select id="filterPerson"><option value="">Everyone</option></select>
+  <label for="filterPerson" id="filterLabel"></label>
+  <select id="filterPerson"></select>
+  <span id="progress"></span>
 </div>
 
 <div id="notes"></div>
 
 <footer>
   <div class="row">
-    <button id="clearPins" title="Delete all CriTick pins from the slides (notes stay)">Remove pins from slides</button>
+    <button id="clearPins"></button>
   </div>
   <div id="savedflag"></div>
 </footer>
@@ -109,12 +125,11 @@
 <script>
 const KEY = 'critick-notes';
 const KEY_PEOPLE = 'critick-people';
-const PIN = '#A83254', PIN_GREY = '#8A867E', PIN_AMBER = '#D9A21B', SELF = '#6E6B64';
+const PIN = '#A83254', SELF = '#6E6B64';
 const ROSTER = {
   'Gilad':'#A83254','Noa':'#2563EB','Issi':'#0E9F6E','Merav':'#D97706','Daniel':'#7C3AED',
   'Maya':'#DB2777','Adi':'#0891B2','Tsofit':'#65A30D','Michal':'#92400E'
 };
-// notes: {uid, pinNum, slideId, shapeName, text, person, status, hidden, pinLeft, pinTop, ts}
 let notes = [];
 let people = {};
 let slidePos = {};
@@ -123,13 +138,139 @@ let selPerson = '';
 let filterP = '';
 let undoStack = [];
 let lastOp = 0;
+let me = '';
+let lang = 'en';
 
 const $ = id => document.getElementById(id);
 
+/* ================= i18n ================= */
+const STR = {
+  en: {
+    sub: 'Corrections are saved inside this presentation',
+    notPpt: 'CriTick runs inside PowerPoint',
+    anchorDefault: 'A numbered pin will be added to the slide — drag it into place',
+    anchorAttached: 'Attached to: ',
+    anchorPin: 'Pin selected',
+    placeholder: 'Write the correction… (Enter to add)',
+    addSlide: 'Add to this slide',
+    addObject: 'Add note on this object',
+    myself: 'Myself',
+    addPerson: 'Add a person',
+    personName: 'Name',
+    filterLabel: 'Show',
+    everyone: 'Everyone',
+    emptyNew: 'Write a correction, press Enter — then drag the pin into place.',
+    emptyFilter: 'No notes for this filter.',
+    slideWord: 'Slide',
+    slideMeta: 'slide',
+    deletedSlide: 'Deleted slide',
+    fixedLabel: '👍 fixed',
+    reassignTip: 'Click to reassign',
+    eyeTip: 'Hide/show the pin on the slide',
+    fixTip: 'Mark fixed — the pin leaves the slide',
+    reopenTip: 'Reopen — the pin returns',
+    delTip: 'Delete note',
+    editTip: 'Double-click to edit',
+    clearPins: 'Remove pins from slides',
+    clearPinsTip: 'Delete all CriTick pins from the slides (notes stay)',
+    saved: 'Saved in this file · save the presentation to keep it',
+    open: 'open',
+    fixedWord: 'fixed',
+    forYou: n => n + ' open ' + (n === 1 ? 'note' : 'notes') + ' for you',
+    nothingForYou: 'nothing open for you',
+    showMine: 'Show mine',
+    change: 'change',
+    whoami: 'Who are you?',
+    goSlide: 'Go to slide',
+    tClickSlide: 'Click a slide first',
+    tCouldNotAdd: 'Could not add the note — try again',
+    tNoPins: 'No pins on the slides',
+    tPinsRemoved: n => n + ' pins removed — notes kept',
+    tCantRemove: 'Could not remove pins',
+    tGoneOne: 'Note deleted with its pin',
+    tGoneMany: n => n + ' notes deleted with their pins',
+    tUndone: 'Undone',
+    tNothingUndo: 'Nothing to undo',
+    tCantUndo: 'Could not undo'
+  },
+  he: {
+    sub: 'התיקונים נשמרים בתוך המצגת',
+    notPpt: 'CriTick פועל בתוך PowerPoint',
+    anchorDefault: 'פין ממוספר יתווסף לשקופית — גררו אותו למקום',
+    anchorAttached: 'מוצמד אל: ',
+    anchorPin: 'פין נבחר',
+    placeholder: 'כתבו את התיקון… (Enter להוספה)',
+    addSlide: 'הוספה לשקופית הזו',
+    addObject: 'הוספת הערה על האובייקט',
+    myself: 'אני',
+    addPerson: 'הוספת שם',
+    personName: 'שם',
+    filterLabel: 'הצגה',
+    everyone: 'כולם',
+    emptyNew: 'כתבו תיקון ולחצו Enter — ואז גררו את הפין למקומו.',
+    emptyFilter: 'אין הערות בסינון הזה.',
+    slideWord: 'שקופית',
+    slideMeta: 'שקופית',
+    deletedSlide: 'שקופית שנמחקה',
+    fixedLabel: '👍 טופל',
+    reassignTip: 'לחיצה לשיוך מחדש',
+    eyeTip: 'הסתרה/הצגה של הפין בשקופית',
+    fixTip: 'סימון כטופל — הפין יוסר מהשקופית',
+    reopenTip: 'פתיחה מחדש — הפין יחזור',
+    delTip: 'מחיקת הערה',
+    editTip: 'לחיצה כפולה לעריכה',
+    clearPins: 'הסרת הפינים מהשקופיות',
+    clearPinsTip: 'מחיקת כל הפינים מהשקופיות (ההערות נשמרות)',
+    saved: 'נשמר בקובץ · שמרו את המצגת כדי לשמור',
+    open: 'פתוחות',
+    fixedWord: 'טופלו',
+    forYou: n => n + ' הערות פתוחות עבורך',
+    nothingForYou: 'אין הערות פתוחות עבורך',
+    showMine: 'הצג רק שלי',
+    change: 'החלפה',
+    whoami: 'מי את/ה?',
+    goSlide: 'מעבר לשקופית',
+    tClickSlide: 'לחצו קודם על שקופית',
+    tCouldNotAdd: 'לא הצלחנו להוסיף — נסו שוב',
+    tNoPins: 'אין פינים בשקופיות',
+    tPinsRemoved: n => n + ' פינים הוסרו — ההערות נשמרו',
+    tCantRemove: 'לא הצלחנו להסיר את הפינים',
+    tGoneOne: 'ההערה נמחקה יחד עם הפין',
+    tGoneMany: n => n + ' הערות נמחקו יחד עם הפינים',
+    tUndone: 'בוטל',
+    tNothingUndo: 'אין מה לבטל',
+    tCantUndo: 'לא הצלחנו לבטל'
+  }
+};
+function t(key){ return STR[lang][key]; }
+
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
+  $('langBtn').textContent = lang === 'he' ? 'EN' : 'עברית';
+  $('sub').textContent = t('sub');
+  $('noteinput').placeholder = t('placeholder');
+  $('filterLabel').textContent = t('filterLabel');
+  $('clearPins').textContent = t('clearPins');
+  $('clearPins').title = t('clearPinsTip');
+  drawPeople();
+  drawMeBar();
+  drawNotes();
+  updateAnchor();
+}
+$('langBtn').addEventListener('click', () => {
+  lang = lang === 'he' ? 'en' : 'he';
+  try{ localStorage.setItem('critick-lang', lang); }catch(e){}
+  applyLang();
+});
+
 /* ================= boot ================= */
 Office.onReady(info => {
+  try{ lang = localStorage.getItem('critick-lang') || 'en'; }catch(e){}
+  try{ me = localStorage.getItem('critick-me') || ''; }catch(e){}
   if (info.host !== Office.HostType.PowerPoint){
-    document.querySelector('header .sub').textContent = 'CriTick runs inside PowerPoint';
+    applyLang();
+    $('sub').textContent = t('notPpt');
     return;
   }
   ready = true;
@@ -142,7 +283,6 @@ Office.onReady(info => {
     if (rawP) people = JSON.parse(rawP);
   }catch(e){}
   Object.keys(ROSTER).forEach(n => { if (!people[n]) people[n] = ROSTER[n]; });
-  // migrate old notes
   let mx = 0;
   notes.forEach(n => { if (n.pinNum > mx) mx = n.pinNum; });
   notes.forEach(n => {
@@ -156,10 +296,62 @@ Office.onReady(info => {
     if (n.hidden === undefined) n.hidden = false;
     if (n.filterHidden === undefined) n.filterHidden = false;
   });
-  drawPeople();
+  applyLang();
   refreshSlideMap().then(async () => { drawNotes(); await applyFilterPins(); });
   watchSelection();
 });
+
+/* ================= me bar ================= */
+function drawMeBar(){
+  const bar = $('mebar');
+  bar.innerHTML = '';
+  if (!ready){ bar.classList.remove('on'); return; }
+  if (!me){
+    bar.classList.add('on');
+    const q = document.createElement('span');
+    q.textContent = t('whoami');
+    bar.appendChild(q);
+    Object.keys(people).forEach(name => {
+      const b = document.createElement('button');
+      b.className = 'who-chip';
+      b.textContent = name;
+      b.addEventListener('click', () => {
+        me = name;
+        try{ localStorage.setItem('critick-me', me); }catch(e){}
+        drawMeBar();
+      });
+      bar.appendChild(b);
+    });
+    return;
+  }
+  const mine = notes.filter(n => n.person === me && n.status === 'open').length;
+  bar.classList.add('on');
+  const txt = document.createElement('span');
+  txt.textContent = me + ' · ' + (mine ? t('forYou')(mine) : t('nothingForYou'));
+  bar.appendChild(txt);
+  if (mine){
+    const btn = document.createElement('button');
+    btn.className = 'mine-btn';
+    btn.textContent = t('showMine');
+    btn.addEventListener('click', async () => {
+      filterP = me;
+      $('filterPerson').value = me;
+      drawNotes();
+      await applyFilterPins();
+      persist();
+    });
+    bar.appendChild(btn);
+  }
+  const chg = document.createElement('span');
+  chg.className = 'chg';
+  chg.textContent = t('change');
+  chg.addEventListener('click', () => {
+    me = '';
+    try{ localStorage.removeItem('critick-me'); }catch(e){}
+    drawMeBar();
+  });
+  bar.appendChild(chg);
+}
 
 /* ================= people & colors ================= */
 function hashColor(name){
@@ -185,7 +377,8 @@ function drawPeople(){
   el.innerHTML = '';
   const none = document.createElement('button');
   none.className = 'chip' + (selPerson === '' ? ' sel' : '');
-  none.innerHTML = '<span class="dot" style="background:' + SELF + '"></span>Myself';
+  none.innerHTML = '<span class="dot" style="background:' + SELF + '"></span>';
+  none.appendChild(document.createTextNode(t('myself')));
   none.addEventListener('click', () => { selPerson = ''; drawPeople(); });
   el.appendChild(none);
   Object.keys(people).forEach(name => {
@@ -198,7 +391,7 @@ function drawPeople(){
   });
   const plus = document.createElement('button');
   plus.className = 'chip'; plus.textContent = '+';
-  plus.title = 'Add a person';
+  plus.title = t('addPerson');
   plus.addEventListener('click', () => {
     plus.style.display = 'none';
     inp.style.display = 'inline-block';
@@ -206,7 +399,7 @@ function drawPeople(){
   });
   el.appendChild(plus);
   const inp = document.createElement('input');
-  inp.id = 'newperson'; inp.dir = 'auto'; inp.placeholder = 'Name';
+  inp.id = 'newperson'; inp.dir = 'auto'; inp.placeholder = t('personName');
   inp.addEventListener('keydown', e => {
     if (e.key === 'Enter'){
       const nm = inp.value.trim();
@@ -216,12 +409,19 @@ function drawPeople(){
     if (e.key === 'Escape') drawPeople();
   });
   el.appendChild(inp);
+  updateAddBtnLabel();
   drawFilter();
+}
+function updateAddBtnLabel(txt){
+  $('addbtn').textContent = txt || t('addSlide');
 }
 function drawFilter(){
   const sel = $('filterPerson');
   const cur = filterP;
-  sel.innerHTML = '<option value="">Everyone</option>';
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = t('everyone');
+  sel.appendChild(o0);
   Object.keys(people).forEach(name => {
     const o = document.createElement('option');
     o.value = name; o.textContent = name;
@@ -239,6 +439,7 @@ function watchSelection(){
   updateAnchor();
 }
 async function updateAnchor(){
+  if (!ready){ $('anchor').textContent = t('anchorDefault'); return; }
   try{
     await PowerPoint.run(async ctx => {
       const shapes = ctx.presentation.getSelectedShapes();
@@ -247,24 +448,27 @@ async function updateAnchor(){
       const selName = shapes.items.length ? shapes.items[0].name : null;
       if (selName && selName.indexOf('CriTickPin-') === 0){
         highlightNote(selName.slice('CriTickPin-'.length));
-        $('anchor').textContent = 'Pin selected';
-        $('addbtn').textContent = 'Add to this slide';
+        $('anchor').textContent = t('anchorPin');
+        updateAddBtnLabel();
         return;
       }
       clearHighlight();
       reconcilePins();
       if (shapes.items.length){
         const nm = shapes.items[0].name;
-        $('anchor').innerHTML = 'Attached to: <b></b>';
-        $('anchor').querySelector('b').textContent = nm;
-        $('addbtn').textContent = 'Add note on this object';
+        $('anchor').innerHTML = '';
+        $('anchor').appendChild(document.createTextNode(t('anchorAttached')));
+        const b = document.createElement('b');
+        b.textContent = nm;
+        $('anchor').appendChild(b);
+        updateAddBtnLabel(t('addObject'));
       } else {
-        $('anchor').textContent = 'A numbered pin will be added to the slide — drag it into place';
-        $('addbtn').textContent = 'Add to this slide';
+        $('anchor').textContent = t('anchorDefault');
+        updateAddBtnLabel();
       }
     });
   }catch(e){
-    $('anchor').textContent = 'A numbered pin will be added to the slide — drag it into place';
+    $('anchor').textContent = t('anchorDefault');
   }
 }
 function highlightNote(uid){
@@ -334,7 +538,6 @@ async function adoptNewPin(slideId, beforeNames, uid){
     await ctx.sync();
   });
 }
-// capture the pin's current position into the note, then delete the image
 async function removePinImage(note){
   lastOp = Date.now();
   try{
@@ -370,7 +573,6 @@ async function maybePlace(note){
   if (matchesFilter(note)){ note.filterHidden = false; await placePinImage(note); }
   else note.filterHidden = true;
 }
-
 async function applyFilterPins(){
   for (const n of notes){
     if (n.hidden || n.status === 'fixed') continue;
@@ -383,15 +585,21 @@ async function applyFilterPins(){
     }
   }
 }
-
 async function recolorPin(note){
   if (note.hidden || note.filterHidden || note.status === 'fixed') return;
   await removePinImage(note);
   await placePinImage(note);
 }
+async function syncPinForStatus(n){
+  if (n.status === 'fixed'){
+    if (!n.hidden && !n.filterHidden) await removePinImage(n);
+  } else {
+    await maybePlace(n);
+  }
+}
 async function clearAllPins(){
   const affected = notes.filter(n => !n.hidden && !n.filterHidden && n.status === 'open');
-  if (!affected.length){ toast('No pins on the slides'); return; }
+  if (!affected.length){ toast(t('tNoPins')); return; }
   try{
     for (const n of affected){
       await removePinImage(n);
@@ -400,8 +608,8 @@ async function clearAllPins(){
     persist();
     drawNotes();
     pushUndo({type:'clearAll', uids: affected.map(n => n.uid)});
-    toast(affected.length + ' pins removed — notes kept');
-  }catch(e){ toast('Could not remove pins'); }
+    toast(t('tPinsRemoved')(affected.length));
+  }catch(e){ toast(t('tCantRemove')); }
 }
 $('clearPins').addEventListener('click', clearAllPins);
 
@@ -447,7 +655,7 @@ async function reconcilePins(){
       });
       persist();
       drawNotes();
-      toast(gone.length === 1 ? 'Note deleted with its pin' : gone.length + ' notes deleted with their pins');
+      toast(gone.length === 1 ? t('tGoneOne') : t('tGoneMany')(gone.length));
     }
   }catch(e){}
   reconBusy = false;
@@ -469,21 +677,21 @@ async function addNote(){
       slideId = sel.items.length ? sel.items[0].id : null;
       shapeName = (shapes.items.length && shapes.items[0].name.indexOf('CriTickPin-') !== 0) ? shapes.items[0].name : null;
     });
-    if (!slideId){ toast('Click a slide first'); $('addbtn').disabled = false; return; }
+    if (!slideId){ toast(t('tClickSlide')); $('addbtn').disabled = false; return; }
     let pinNum = 0;
     notes.forEach(n => { if (n.pinNum > pinNum) pinNum = n.pinNum; });
     pinNum++;
     const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-    const note = {uid, pinNum, slideId, shapeName, text, person: selPerson, status: 'open', hidden: false, pinLeft: null, pinTop: null, ts: Date.now()};
+    const note = {uid, pinNum, slideId, shapeName, text, person: selPerson, status: 'open', hidden: false, filterHidden: false, pinLeft: null, pinTop: null, ts: Date.now()};
     notes.push(note);
-    await placePinImage(note);
+    await maybePlace(note);
     persist();
     pushUndo({type:'add', uid});
     $('noteinput').value = '';
     await refreshSlideMap();
     drawNotes();
   }catch(e){
-    toast('Could not add the note — try again');
+    toast(t('tCouldNotAdd'));
   }
   $('addbtn').disabled = false;
   $('noteinput').focus();
@@ -492,23 +700,21 @@ $('addbtn').addEventListener('click', addNote);
 $('noteinput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
 
 /* ================= list ================= */
-const STATUS_LABEL = {open:'', fixed:'👍 fixed'};
-
-async function syncPinForStatus(n){
-  if (n.status === 'fixed'){
-    if (!n.hidden && !n.filterHidden) await removePinImage(n);
-  } else {
-    await maybePlace(n);
-  }
-}
-
 function drawNotes(){
   const el = $('notes');
+  const openCount = notes.filter(n => n.status === 'open').length;
+  const fixedCount = notes.length - openCount;
+  $('progress').innerHTML = '';
+  if (notes.length){
+    $('progress').appendChild(document.createTextNode(openCount + ' ' + t('open') + ' · '));
+    const b = document.createElement('b');
+    b.textContent = fixedCount + ' ' + t('fixedWord');
+    $('progress').appendChild(b);
+  }
+  drawMeBar();
   const visible = notes.filter(n => !filterP || n.person === filterP);
   if (!visible.length){
-    el.innerHTML = '<div class="empty">' + (notes.length
-      ? 'No notes for this filter.'
-      : 'Write a correction, press Enter — then drag the pin into place.') + '</div>';
+    el.innerHTML = '<div class="empty">' + (notes.length ? t('emptyFilter') : t('emptyNew')) + '</div>';
     return;
   }
   const groups = {};
@@ -520,107 +726,151 @@ function drawNotes(){
   Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
     const head = document.createElement('div');
     head.className = 'slidehead';
-    head.textContent = p === 9999 ? 'Deleted slide' : 'Slide ' + p;
+    head.textContent = p === 9999 ? t('deletedSlide') : t('slideWord') + ' ' + p;
     if (p !== 9999){
-      head.title = 'Go to slide ' + p;
+      head.title = t('goSlide') + ' ' + p;
       head.addEventListener('click', () => goTo(groups[p][0].slideId));
     }
     el.appendChild(head);
     groups[p].forEach(n => {
-      const row = document.createElement('div');
-      row.className = 'note st-' + n.status;
-      row.dataset.uid = n.uid;
-      row.innerHTML = '<div class="num"></div>' +
-        '<div class="body"><div class="txt"></div><div class="meta"></div></div>' +
-        '<div class="acts">' +
-          (n.status === 'open' ? '<button class="eye" title="Hide/show the pin on the slide">👁</button>' : '') +
-          '<button class="st-btn" title="' + (n.status === 'fixed' ? 'Reopen — the pin returns' : 'Mark fixed — the pin leaves the slide') + '">👍</button>' +
-          '<button class="del" title="Delete note">✕</button>' +
-        '</div>';
-      const num = row.querySelector('.num');
-      num.textContent = n.pinNum;
-      num.style.background = personColor(n);
-      row.querySelector('.txt').textContent = n.text;
-      const meta = row.querySelector('.meta');
-      const assign = document.createElement('span');
-      assign.className = 'assign';
-      assign.title = 'Click to reassign';
-      const d = document.createElement('span');
-      d.className = 'pdot';
-      d.style.background = n.person ? ensureColor(n.person) : SELF;
-      assign.appendChild(d);
-      assign.appendChild(document.createTextNode(n.person || 'Myself'));
-      assign.addEventListener('click', e => {
-        e.stopPropagation();
-        const sel = document.createElement('select');
-        sel.className = 'assign-sel';
-        const o0 = document.createElement('option');
-        o0.value = ''; o0.textContent = 'Myself';
-        sel.appendChild(o0);
-        Object.keys(people).forEach(name => {
-          const o = document.createElement('option');
-          o.value = name; o.textContent = name;
-          sel.appendChild(o);
-        });
-        sel.value = n.person;
-        sel.addEventListener('click', ev => ev.stopPropagation());
-        sel.addEventListener('change', async () => {
-          const prev = n.person;
-          n.person = sel.value;
-          pushUndo({type:'person', uid: n.uid, prev});
-          persist();
-          await recolorPin(n);
-          await applyFilterPins();
-          drawNotes();
-        });
-        sel.addEventListener('blur', () => drawNotes());
-        assign.replaceWith(sel);
-        sel.focus();
-      });
-      meta.appendChild(assign);
-      meta.appendChild(document.createTextNode(' · '));
-      meta.appendChild(document.createTextNode('slide ' + (slidePos[n.slideId] || '?')));
-      if (STATUS_LABEL[n.status]){
-        const st = document.createElement('span');
-        st.className = 'st ' + n.status;
-        st.textContent = STATUS_LABEL[n.status];
-        meta.appendChild(document.createTextNode(' · '));
-        meta.appendChild(st);
-      }
-      if (n.shapeName){
-        const tag = document.createElement('span');
-        tag.className = 'tag'; tag.textContent = n.shapeName;
-        row.querySelector('.body').appendChild(tag);
-      }
-      const eye = row.querySelector('.eye');
-      if (eye && n.hidden) eye.classList.add('off');
-      row.addEventListener('click', () => { if (n.hidden || n.filterHidden) goTo(n.slideId); else selectPin(n); });
-      if (eye) eye.addEventListener('click', async e => {
-        e.stopPropagation();
-        if (n.hidden){ n.hidden = false; await placePinImage(n); pushUndo({type:'show', uid:n.uid}); }
-        else { await removePinImage(n); n.hidden = true; pushUndo({type:'hide', uid:n.uid}); }
-        persist(); drawNotes();
-      });
-      row.querySelector('.st-btn').addEventListener('click', async e => {
-        e.stopPropagation();
-        pushUndo({type:'status', uid:n.uid, prev: n.status});
-        n.status = n.status === 'fixed' ? 'open' : 'fixed';
-        await syncPinForStatus(n);
-        persist(); drawNotes();
-      });
-      row.querySelector('.del').addEventListener('click', async e => {
-        e.stopPropagation();
-        await removePinImage(n);
-        const idx = notes.indexOf(n);
-        if (idx > -1) notes.splice(idx, 1);
-        pushUndo({type:'delete', note: JSON.parse(JSON.stringify(n))});
-        persist(); drawNotes();
-      });
-      el.appendChild(row);
+      el.appendChild(buildRow(n, p));
     });
   });
 }
 
+function buildRow(n, p){
+  const row = document.createElement('div');
+  row.className = 'note st-' + n.status;
+  row.dataset.uid = n.uid;
+  row.innerHTML = '<div class="num"></div>' +
+    '<div class="body"><div class="txt"></div><div class="meta"></div></div>' +
+    '<div class="acts">' +
+      (n.status === 'open' ? '<button class="eye">👁</button>' : '') +
+      '<button class="st-btn">👍</button>' +
+      '<button class="del">✕</button>' +
+    '</div>';
+  const num = row.querySelector('.num');
+  num.textContent = n.pinNum;
+  num.style.background = personColor(n);
+  const txtEl = row.querySelector('.txt');
+  txtEl.textContent = n.text;
+  txtEl.title = t('editTip');
+  txtEl.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    startEdit(n, txtEl);
+  });
+  const meta = row.querySelector('.meta');
+  const assign = document.createElement('span');
+  assign.className = 'assign';
+  assign.title = t('reassignTip');
+  const d = document.createElement('span');
+  d.className = 'pdot';
+  d.style.background = n.person ? ensureColor(n.person) : SELF;
+  assign.appendChild(d);
+  assign.appendChild(document.createTextNode(n.person || t('myself')));
+  assign.addEventListener('click', e => {
+    e.stopPropagation();
+    const sel = document.createElement('select');
+    sel.className = 'assign-sel';
+    const o0 = document.createElement('option');
+    o0.value = ''; o0.textContent = t('myself');
+    sel.appendChild(o0);
+    Object.keys(people).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+    });
+    sel.value = n.person;
+    sel.addEventListener('click', ev => ev.stopPropagation());
+    sel.addEventListener('change', async () => {
+      const prev = n.person;
+      n.person = sel.value;
+      pushUndo({type:'person', uid: n.uid, prev});
+      persist();
+      await recolorPin(n);
+      await applyFilterPins();
+      drawNotes();
+    });
+    sel.addEventListener('blur', () => drawNotes());
+    assign.replaceWith(sel);
+    sel.focus();
+  });
+  meta.appendChild(assign);
+  meta.appendChild(document.createTextNode(' · '));
+  meta.appendChild(document.createTextNode(t('slideMeta') + ' ' + (slidePos[n.slideId] || '?')));
+  if (n.status === 'fixed'){
+    const st = document.createElement('span');
+    st.className = 'st fixed';
+    st.textContent = t('fixedLabel');
+    meta.appendChild(document.createTextNode(' · '));
+    meta.appendChild(st);
+  }
+  if (n.shapeName){
+    const tag = document.createElement('span');
+    tag.className = 'tag'; tag.textContent = n.shapeName;
+    row.querySelector('.body').appendChild(tag);
+  }
+  const eye = row.querySelector('.eye');
+  if (eye){
+    eye.title = t('eyeTip');
+    if (n.hidden) eye.classList.add('off');
+    eye.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (n.hidden){ n.hidden = false; await maybePlace(n); pushUndo({type:'show', uid:n.uid}); }
+      else { await removePinImage(n); n.hidden = true; pushUndo({type:'hide', uid:n.uid}); }
+      persist(); drawNotes();
+    });
+  }
+  const stBtn = row.querySelector('.st-btn');
+  stBtn.title = n.status === 'fixed' ? t('reopenTip') : t('fixTip');
+  stBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    pushUndo({type:'status', uid:n.uid, prev: n.status});
+    n.status = n.status === 'fixed' ? 'open' : 'fixed';
+    await syncPinForStatus(n);
+    persist(); drawNotes();
+  });
+  const del = row.querySelector('.del');
+  del.title = t('delTip');
+  del.addEventListener('click', async e => {
+    e.stopPropagation();
+    await removePinImage(n);
+    const idx = notes.indexOf(n);
+    if (idx > -1) notes.splice(idx, 1);
+    pushUndo({type:'delete', note: JSON.parse(JSON.stringify(n))});
+    persist(); drawNotes();
+  });
+  row.addEventListener('click', () => { if (n.hidden || n.filterHidden || n.status === 'fixed') goTo(n.slideId); else selectPin(n); });
+  return row;
+}
+
+/* ================= edit note text ================= */
+function startEdit(n, txtEl){
+  const inp = document.createElement('input');
+  inp.className = 'txt-edit';
+  inp.dir = 'auto';
+  inp.value = n.text;
+  inp.addEventListener('click', e => e.stopPropagation());
+  const finish = save => {
+    const v = inp.value.trim();
+    if (save && v && v !== n.text){
+      pushUndo({type:'edit', uid:n.uid, prev:n.text});
+      n.text = v;
+      persist();
+    }
+    drawNotes();
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') finish(true);
+    if (e.key === 'Escape') finish(false);
+  });
+  inp.addEventListener('blur', () => finish(true));
+  txtEl.replaceWith(inp);
+  inp.focus();
+  inp.select();
+}
+
+/* ================= locate pin ================= */
 async function selectPin(n){
   try{
     await PowerPoint.run(async ctx => {
@@ -635,7 +885,6 @@ async function selectPin(n){
     await flashPin(n);
   }catch(e){ goTo(n.slideId); }
 }
-
 async function flashPin(n){
   try{
     await removePinImage(n);
@@ -650,7 +899,6 @@ async function flashPin(n){
     await placePinImage(n);
   }catch(e){}
 }
-
 async function goTo(slideId){
   if (!slidePos[slideId]) return;
   try{
@@ -670,7 +918,7 @@ function findNote(uid){ return notes.find(n => n.uid === uid); }
 
 async function undo(){
   const e = undoStack.pop();
-  if (!e){ toast('Nothing to undo'); return; }
+  if (!e){ toast(t('tNothingUndo')); return; }
   try{
     if (e.type === 'add'){
       const n = findNote(e.uid);
@@ -683,6 +931,10 @@ async function undo(){
     else if (e.type === 'person'){
       const n = findNote(e.uid);
       if (n){ n.person = e.prev; await recolorPin(n); await applyFilterPins(); }
+    }
+    else if (e.type === 'edit'){
+      const n = findNote(e.uid);
+      if (n) n.text = e.prev;
     }
     else if (e.type === 'status'){
       const n = findNote(e.uid);
@@ -705,8 +957,8 @@ async function undo(){
     persist();
     await refreshSlideMap();
     drawNotes();
-    toast('Undone');
-  }catch(err){ toast('Could not undo'); }
+    toast(t('tUndone'));
+  }catch(err){ toast(t('tCantUndo')); }
 }
 document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z'){
@@ -722,7 +974,7 @@ function persist(){
     Office.context.document.settings.set(KEY, JSON.stringify(notes));
     Office.context.document.settings.saveAsync(res => {
       $('savedflag').textContent = res.status === Office.AsyncResultStatus.Succeeded
-        ? 'Saved in this file · save the presentation to keep it'
+        ? t('saved')
         : '';
     });
   }catch(e){}
@@ -731,8 +983,8 @@ function persist(){
 /* ================= toast ================= */
 let toastT = null;
 function toast(msg){
-  const t = $('toast'); t.textContent = msg; t.classList.add('on');
-  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 2200);
+  const t2 = $('toast'); t2.textContent = msg; t2.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(()=>t2.classList.remove('on'), 2200);
 }
 </script>
 </body>
