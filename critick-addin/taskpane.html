@@ -36,6 +36,7 @@
   .empty{padding:32px 18px; color:var(--muted); font-size:13px; line-height:1.7; text-align:center;}
   .note{display:flex; gap:8px; padding:8px 14px; align-items:flex-start; cursor:pointer;}
   .note:hover{background:var(--pin-soft);}
+  .note.hl{background:var(--pin-soft); box-shadow:inset 3px 0 0 var(--pin);}
   .note .num{flex:none; width:20px; height:20px; border-radius:50%; background:var(--pin-soft); color:var(--pin); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;}
   .note.done .num{background:var(--done-soft); color:var(--done);}
   .note .body{flex:1; min-width:0;}
@@ -124,6 +125,14 @@ async function updateAnchor(){
       const shapes = ctx.presentation.getSelectedShapes();
       shapes.load('items/name');
       await ctx.sync();
+      const selName = shapes.items.length ? shapes.items[0].name : null;
+      if (selName && selName.indexOf('CriTickPin-') === 0){
+        highlightNote(selName.slice('CriTickPin-'.length));
+        $('anchor').textContent = 'Pin selected';
+        $('addbtn').textContent = 'Add to this slide';
+        return;
+      }
+      clearHighlight();
       if (shapes.items.length){
         const nm = shapes.items[0].name;
         $('anchor').innerHTML = 'Attached to: <b></b>';
@@ -166,7 +175,7 @@ async function addNote(){
       shapes.load('items/name');
       await ctx.sync();
       const slideId = sel.items.length ? sel.items[0].id : null;
-      const shapeName = shapes.items.length ? shapes.items[0].name : null;
+      const shapeName = (shapes.items.length && shapes.items[0].name.indexOf('CriTickPin-') !== 0) ? shapes.items[0].name : null;
       if (!slideId){ toast('Click a slide first'); return; }
       let pinNum = 0;
       notes.forEach(n => { if (n.pinNum > pinNum) pinNum = n.pinNum; });
@@ -175,6 +184,7 @@ async function addNote(){
       notes.push({uid, pinNum, slideId, shapeName, text, done: false, ts: Date.now()});
       insertPin(ctx, slideId, uid, pinNum);
       await ctx.sync();
+      try{ ctx.presentation.setSelectedSlides([slideId]); await ctx.sync(); }catch(e){}
       persist();
       $('noteinput').value = '';
     });
@@ -188,6 +198,16 @@ async function addNote(){
 }
 $('addbtn').addEventListener('click', addNote);
 $('noteinput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
+
+/* ---------- highlight note from pin ---------- */
+function highlightNote(uid){
+  clearHighlight();
+  const row = document.querySelector('.note[data-uid="' + uid + '"]');
+  if (row){ row.classList.add('hl'); row.scrollIntoView({block:'nearest'}); }
+}
+function clearHighlight(){
+  document.querySelectorAll('.note.hl').forEach(r => r.classList.remove('hl'));
+}
 
 /* ---------- pins on the slide ---------- */
 const PIN = '#A83254', PIN_DONE = '#2E7D5B';
@@ -286,6 +306,7 @@ function drawNotes(){
     groups[p].forEach(({n, i}) => {
       const row = document.createElement('div');
       row.className = 'note' + (n.done ? ' done' : '');
+      row.dataset.uid = n.uid;
       row.innerHTML = '<div class="num">' + n.pinNum + '</div>' +
         '<div class="body"><div class="txt"></div></div>' +
         '<div class="acts"><button class="chk" title="Mark done">✓</button><button class="del" title="Delete">✕</button></div>';
