@@ -305,12 +305,13 @@ function pinImageBase64(num, color){
   g.fillText(String(num), 32, 34);
   return c.toDataURL('image/png').split(',')[1];
 }
-function insertPinImage(num, color, left, top){
+function insertPinImage(num, color, left, top, size){
   lastOp = Date.now();
+  const px = size || 26;
   return new Promise(resolve => {
     Office.context.document.setSelectedDataAsync(pinImageBase64(num, color), {
       coercionType: Office.CoercionType.Image,
-      imageLeft: left, imageTop: top, imageWidth: 26, imageHeight: 26
+      imageLeft: left, imageTop: top, imageWidth: px, imageHeight: px
     }, r => resolve(r.status === Office.AsyncResultStatus.Succeeded));
   });
 }
@@ -627,7 +628,23 @@ async function selectPin(n){
       if (sh){ try{ ctx.presentation.setSelectedShapes([sh.id]); }catch(e){} }
       await ctx.sync();
     });
+    await flashPin(n);
   }catch(e){ goTo(n.slideId); }
+}
+
+async function flashPin(n){
+  try{
+    await removePinImage(n);
+    if (n.pinLeft === null || n.pinLeft === undefined){ await placePinImage(n); return; }
+    const grow = 8;
+    const before = await slideShapeNames(n.slideId);
+    await insertPinImage(n.pinNum, personColor(n), n.pinLeft - grow, n.pinTop - grow, 26 + grow * 2);
+    await adoptNewPin(n.slideId, before, n.uid);
+    await new Promise(r => setTimeout(r, 650));
+    await removePinImage(n);
+    n.pinLeft += grow; n.pinTop += grow;
+    await placePinImage(n);
+  }catch(e){}
 }
 
 async function goTo(slideId){
