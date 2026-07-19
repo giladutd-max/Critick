@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:type="TaskPaneApp">
+  <Id>9598c573-ebd1-4287-ba76-3d62424a0074</Id>
+  <Version>1.0.0</Version>
+  <ProviderName>Delta Galil</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="CriTick"/>
+  <Description DefaultValue="Capture deck corrections during review calls, saved inside the presentation."/>
+  <IconUrl DefaultValue="https://critick.vercel.app/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://critick.vercel.app/assets/icon-80.png"/>
+  <SupportUrl DefaultValue="https://critick.vercel.app"/>
+  <AppDomains>
+    <AppDomain>https://critick.vercel.app</AppDomain>
+  </AppDomains>
+  <Hosts>
+    <Host Name="Presentation"/>
+  </Hosts>
+  <DefaultSettings>
+    <SourceLocation DefaultValue="https://critick.vercel.app/taskpane.html"/>
+  </DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+</OfficeApp>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CriTick</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF9F6; --panel:#FFFFFF; --ink:#1C1B1A; --muted:#8A867E; --line:#E7E4DD;
+    --pin:#A83254; --pin-soft:#F7E6EC; --done:#2E7D5B; --done-soft:#E4F0EA;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Heebo',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; display:flex; flex-direction:column;}
+
+  header{padding:12px 14px 10px; background:var(--panel); border-bottom:1px solid var(--line);}
+  header .brand{font-weight:700; font-size:16px;}
+  header .brand span{color:var(--pin);}
+  header .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+
+  #composerbox{padding:12px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
+  #anchor{font-size:11px; color:var(--muted); margin-bottom:6px; min-height:15px;}
+  #anchor b{color:var(--pin); font-weight:500;}
+  #noteinput{width:100%; font-family:inherit; font-size:14px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; background:var(--bg);}
+  #noteinput:focus{border-color:var(--pin);}
+  #addbtn{width:100%; margin-top:8px; font-family:inherit; font-size:13px; font-weight:500; background:var(--ink); color:#fff; border:none; border-radius:8px; padding:8px; cursor:pointer;}
+  #addbtn:hover{background:#333;}
+  #addbtn:disabled{opacity:.5; cursor:default;}
+
+  #notes{flex:1; overflow-y:auto;}
+  .slidehead{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:12px 14px 4px; cursor:pointer;}
+  .slidehead:hover{color:var(--pin);}
+  .empty{padding:32px 18px; color:var(--muted); font-size:13px; line-height:1.7; text-align:center;}
+  .note{display:flex; gap:8px; padding:8px 14px; align-items:flex-start; cursor:pointer;}
+  .note:hover{background:var(--pin-soft);}
+  .note .num{flex:none; width:20px; height:20px; border-radius:50%; background:var(--pin-soft); color:var(--pin); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;}
+  .note.done .num{background:var(--done-soft); color:var(--done);}
+  .note .body{flex:1; min-width:0;}
+  .note .txt{font-size:13px; line-height:1.45; word-wrap:break-word; unicode-bidi:plaintext;}
+  .note.done .txt{color:var(--muted); text-decoration:line-through;}
+  .note .tag{display:inline-block; font-size:10px; color:var(--muted); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:0 5px; margin-top:3px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .note .acts{flex:none; display:flex; gap:0;}
+  .note .acts button{border:none; background:none; padding:2px 4px; font-size:14px; color:var(--muted); cursor:pointer; font-family:inherit;}
+  .note .acts .chk:hover{color:var(--done);}
+  .note .acts .del:hover{color:var(--pin);}
+
+  footer{padding:10px 14px; background:var(--panel); border-top:1px solid var(--line);}
+  footer .row{display:flex; gap:8px;}
+  footer button{flex:1; font-family:inherit; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px; cursor:pointer; color:var(--ink);}
+  footer button:hover{border-color:#C9C5BC;}
+  #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:6px; min-height:13px;}
+
+  #toast{position:fixed; bottom:64px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; font-size:12px; padding:6px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:99; white-space:nowrap;}
+  #toast.on{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Cri<span>Tick</span></div>
+  <div class="sub" id="sub">Corrections are saved inside this presentation</div>
+</header>
+
+<div id="composerbox">
+  <div id="anchor">Nothing selected — note will attach to the current slide</div>
+  <input id="noteinput" type="text" dir="auto" placeholder="Write the correction… (Enter to add)">
+  <button id="addbtn">Add to this slide</button>
+</div>
+
+<div id="notes"></div>
+
+<footer>
+  <div class="row">
+    <button id="copyList">Copy list</button>
+    <button id="dlList">Download .txt</button>
+  </div>
+  <div id="savedflag"></div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+const KEY = 'critick-notes';
+let notes = [];   // {slideId, shapeName, text, done, ts}
+let slidePos = {}; // slideId -> position (1-based)
+let ready = false;
+
+const $ = id => document.getElementById(id);
+
+Office.onReady(info => {
+  if (info.host !== Office.HostType.PowerPoint){
+    $('sub').textContent = 'CriTick runs inside PowerPoint';
+    return;
+  }
+  ready = true;
+  try{
+    const raw = Office.context.document.settings.get(KEY);
+    if (raw) notes = JSON.parse(raw);
+  }catch(e){}
+  refreshSlideMap().then(drawNotes);
+  watchSelection();
+});
+
+/* ---------- selection awareness ---------- */
+function watchSelection(){
+  try{
+    Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, updateAnchor);
+  }catch(e){}
+  updateAnchor();
+}
+
+async function updateAnchor(){
+  try{
+    await PowerPoint.run(async ctx => {
+      const shapes = ctx.presentation.getSelectedShapes();
+      shapes.load('items/name');
+      await ctx.sync();
+      if (shapes.items.length){
+        const nm = shapes.items[0].name;
+        $('anchor').innerHTML = 'Attached to: <b></b>';
+        $('anchor').querySelector('b').textContent = nm;
+        $('addbtn').textContent = 'Add note on this object';
+      } else {
+        $('anchor').textContent = 'Nothing selected — note will attach to the current slide';
+        $('addbtn').textContent = 'Add to this slide';
+      }
+    });
+  }catch(e){
+    $('anchor').textContent = 'Note will attach to the current slide';
+  }
+}
+
+/* ---------- slide positions ---------- */
+async function refreshSlideMap(){
+  if (!ready) return;
+  try{
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides;
+      sl.load('items/id');
+      await ctx.sync();
+      slidePos = {};
+      sl.items.forEach((s, i) => { slidePos[s.id] = i + 1; });
+    });
+  }catch(e){}
+}
+
+/* ---------- add note ---------- */
+async function addNote(){
+  const text = $('noteinput').value.trim();
+  if (!text || !ready) return;
+  $('addbtn').disabled = true;
+  try{
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      const shapes = ctx.presentation.getSelectedShapes();
+      shapes.load('items/name');
+      await ctx.sync();
+      const slideId = sel.items.length ? sel.items[0].id : null;
+      const shapeName = shapes.items.length ? shapes.items[0].name : null;
+      if (!slideId){ toast('Click a slide first'); return; }
+      notes.push({slideId, shapeName, text, done: false, ts: Date.now()});
+      persist();
+      $('noteinput').value = '';
+    });
+    await refreshSlideMap();
+    drawNotes();
+  }catch(e){
+    toast('Could not read the selection — try again');
+  }
+  $('addbtn').disabled = false;
+  $('noteinput').focus();
+}
+$('addbtn').addEventListener('click', addNote);
+$('noteinput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
+
+/* ---------- list ---------- */
+function drawNotes(){
+  const el = $('notes');
+  if (!notes.length){
+    el.innerHTML = '<div class="empty">On the call, click the slide (or the exact object) being discussed,<br>write the correction, press Enter.</div>';
+    return;
+  }
+  // group by slide position, unknown slides (deleted) last
+  const groups = {};
+  notes.forEach((n, i) => {
+    const p = slidePos[n.slideId] || 9999;
+    (groups[p] = groups[p] || []).push({n, i});
+  });
+  el.innerHTML = '';
+  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
+    const head = document.createElement('div');
+    head.className = 'slidehead';
+    head.textContent = p === 9999 ? 'Deleted slide' : 'Slide ' + p;
+    if (p !== 9999){
+      head.title = 'Go to slide ' + p;
+      head.addEventListener('click', () => goTo(groups[p][0].n.slideId));
+    }
+    el.appendChild(head);
+    groups[p].forEach(({n, i}) => {
+      const row = document.createElement('div');
+      row.className = 'note' + (n.done ? ' done' : '');
+      row.innerHTML = '<div class="num">' + (i+1) + '</div>' +
+        '<div class="body"><div class="txt"></div></div>' +
+        '<div class="acts"><button class="chk" title="Mark done">✓</button><button class="del" title="Delete">✕</button></div>';
+      row.querySelector('.txt').textContent = n.text;
+      if (n.shapeName){
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.textContent = n.shapeName;
+        row.querySelector('.body').appendChild(tag);
+      }
+      row.addEventListener('click', () => goTo(n.slideId));
+      row.querySelector('.chk').addEventListener('click', e => { e.stopPropagation(); n.done = !n.done; persist(); drawNotes(); });
+      row.querySelector('.del').addEventListener('click', e => { e.stopPropagation(); notes.splice(i,1); persist(); drawNotes(); });
+      el.appendChild(row);
+    });
+  });
+}
+
+async function goTo(slideId){
+  if (!slidePos[slideId]) return;
+  try{
+    await PowerPoint.run(async ctx => {
+      ctx.presentation.setSelectedSlides([slideId]);
+      await ctx.sync();
+    });
+  }catch(e){}
+}
+
+/* ---------- persistence: inside the pptx ---------- */
+function persist(){
+  try{
+    Office.context.document.settings.set(KEY, JSON.stringify(notes));
+    Office.context.document.settings.saveAsync(res => {
+      $('savedflag').textContent = res.status === Office.AsyncResultStatus.Succeeded
+        ? 'Saved in this file · save the presentation to keep it'
+        : '';
+    });
+  }catch(e){}
+}
+
+/* ---------- export ---------- */
+function listText(){
+  let out = 'Corrections\n' + new Date().toLocaleDateString() + '\n';
+  const groups = {};
+  notes.forEach((n, i) => {
+    const p = slidePos[n.slideId] || 9999;
+    (groups[p] = groups[p] || []).push({n, i});
+  });
+  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
+    out += '\nSlide ' + (p === 9999 ? '(deleted)' : p) + '\n';
+    groups[p].forEach(({n, i}) => {
+      out += '  ' + (n.done ? '[v]' : '[ ]') + ' ' + (i+1) + '. ' + (n.shapeName ? '[' + n.shapeName + '] ' : '') + n.text + '\n';
+    });
+  });
+  const open = notes.filter(n=>!n.done).length;
+  out += '\n' + notes.length + ' corrections · ' + open + ' still open\n';
+  return out;
+}
+$('copyList').addEventListener('click', async () => {
+  if (!notes.length){ toast('No corrections yet'); return; }
+  await refreshSlideMap();
+  const t = listText();
+  try{ await navigator.clipboard.writeText(t); toast('List copied'); }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = t;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    toast('List copied');
+  }
+});
+$('dlList').addEventListener('click', async () => {
+  if (!notes.length){ toast('No corrections yet'); return; }
+  await refreshSlideMap();
+  const blob = new Blob([listText()], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'corrections.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+/* ---------- toast ---------- */
+let toastT = null;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('on'), 2200);
+}
+</script>
+</body>
+</html>
