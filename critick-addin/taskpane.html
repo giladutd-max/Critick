@@ -52,6 +52,9 @@
   .note.st-fixed .txt, .note.st-canceled .txt{color:var(--muted); text-decoration:line-through;}
   .note .meta{font-size:11px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;}
   .note .meta .pdot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+  .note .meta .assign{cursor:pointer; display:inline-flex; align-items:center; gap:5px;}
+  .note .meta .assign:hover{color:var(--ink); text-decoration:underline;}
+  .assign-sel{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:6px; background:var(--panel);}
   .note .meta .st{font-weight:500;}
   .note .st.fixed{color:var(--done);}
   .note .st.canceled{color:var(--muted);}
@@ -533,13 +536,43 @@ function drawNotes(){
       num.style.background = personColor(n);
       row.querySelector('.txt').textContent = n.text;
       const meta = row.querySelector('.meta');
-      if (n.person){
-        const d = document.createElement('span');
-        d.className = 'pdot'; d.style.background = ensureColor(n.person);
-        meta.appendChild(d);
-        meta.appendChild(document.createTextNode(n.person));
-        meta.appendChild(document.createTextNode(' · '));
-      }
+      const assign = document.createElement('span');
+      assign.className = 'assign';
+      assign.title = 'Click to reassign';
+      const d = document.createElement('span');
+      d.className = 'pdot';
+      d.style.background = n.person ? ensureColor(n.person) : SELF;
+      assign.appendChild(d);
+      assign.appendChild(document.createTextNode(n.person || 'Myself'));
+      assign.addEventListener('click', e => {
+        e.stopPropagation();
+        const sel = document.createElement('select');
+        sel.className = 'assign-sel';
+        const o0 = document.createElement('option');
+        o0.value = ''; o0.textContent = 'Myself';
+        sel.appendChild(o0);
+        Object.keys(people).forEach(name => {
+          const o = document.createElement('option');
+          o.value = name; o.textContent = name;
+          sel.appendChild(o);
+        });
+        sel.value = n.person;
+        sel.addEventListener('click', ev => ev.stopPropagation());
+        sel.addEventListener('change', async () => {
+          const prev = n.person;
+          n.person = sel.value;
+          pushUndo({type:'person', uid: n.uid, prev});
+          persist();
+          await recolorPin(n);
+          await applyFilterPins();
+          drawNotes();
+        });
+        sel.addEventListener('blur', () => drawNotes());
+        assign.replaceWith(sel);
+        sel.focus();
+      });
+      meta.appendChild(assign);
+      meta.appendChild(document.createTextNode(' · '));
       meta.appendChild(document.createTextNode('slide ' + (slidePos[n.slideId] || '?')));
       if (STATUS_LABEL[n.status]){
         const st = document.createElement('span');
@@ -555,7 +588,7 @@ function drawNotes(){
       }
       const eye = row.querySelector('.eye');
       if (n.hidden) eye.classList.add('off');
-      row.addEventListener('click', () => goTo(n.slideId));
+      row.addEventListener('click', () => { if (n.hidden || n.filterHidden) goTo(n.slideId); else selectPin(n); });
       eye.addEventListener('click', async e => {
         e.stopPropagation();
         if (n.hidden){ n.hidden = false; await placePinImage(n); pushUndo({type:'show', uid:n.uid}); }
@@ -581,6 +614,20 @@ function drawNotes(){
       el.appendChild(row);
     });
   });
+}
+
+async function selectPin(n){
+  try{
+    await PowerPoint.run(async ctx => {
+      try{ ctx.presentation.setSelectedSlides([n.slideId]); }catch(e){}
+      const sl = ctx.presentation.slides.getItem(n.slideId);
+      sl.shapes.load('items/name,items/id');
+      await ctx.sync();
+      const sh = sl.shapes.items.find(x => x.name === 'CriTickPin-' + n.uid);
+      if (sh){ try{ ctx.presentation.setSelectedShapes([sh.id]); }catch(e){} }
+      await ctx.sync();
+    });
+  }catch(e){ goTo(n.slideId); }
 }
 
 async function goTo(slideId){
@@ -611,6 +658,10 @@ async function undo(){
     else if (e.type === 'delete'){
       notes.push(e.note);
       await maybePlace(e.note);
+    }
+    else if (e.type === 'person'){
+      const n = findNote(e.uid);
+      if (n){ n.person = e.prev; await recolorPin(n); await applyFilterPins(); }
     }
     else if (e.type === 'status'){
       const n = findNote(e.uid);
