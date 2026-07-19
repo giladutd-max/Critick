@@ -952,7 +952,7 @@ async function resolveAnchors(openNotes){
       Object.keys(bySlide).forEach(id => {
         if (!existing[id]) return;
         loaded[id] = ctx.presentation.slides.getItem(id);
-        loaded[id].shapes.load('items/name,items/left,items/top,items/width,items/height');
+        loaded[id].shapes.load('items/name,items/left,items/top,items/width,items/height,items/type');
       });
       await ctx.sync();
       Object.keys(loaded).forEach(id => {
@@ -966,15 +966,16 @@ async function resolveAnchors(openNotes){
             x.name.indexOf('CriTickPin-') !== 0 &&
             cx >= x.left && cx <= x.left + x.width &&
             cy >= x.top && cy <= x.top + x.height);
-          let obj = null;
+          let obj = null, isGroup = false;
           if (hits.length){
             hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
             obj = hits[0].name;
+            isGroup = hits[0].type === 'Group' || hits[0].name.indexOf('Group') === 0;
           }
           const W = 960, H = 540;
           const col = cx < W / 3 ? 'left' : (cx > 2 * W / 3 ? 'right' : 'center');
           const rowp = cy < H / 3 ? 'top' : (cy > 2 * H / 3 ? 'bottom' : 'middle');
-          res[n.uid] = {obj: obj, region: rowp + ' ' + col};
+          res[n.uid] = {obj: obj, isGroup: isGroup, x: Math.round(cx), y: Math.round(cy), region: rowp + ' ' + col};
         });
       });
     });
@@ -992,15 +993,19 @@ function claudePrompt(anchors){
   let out = 'Please apply the following corrections to this presentation. ';
   out += 'Go slide by slide and make only the changes listed. ';
   out += 'Ignore the small numbered circle images named CriTickPin-* \u2014 do not move, edit, or delete them. ';
+  out += 'Rules: (1) When zooming into or cropping an image, CROP it \u2014 never stretch it or change its aspect ratio. ';
+  out += '(2) A correction applies to the single element at the pin position given \u2014 when that element is inside a group, act only on that element, never on the whole group, unless the correction explicitly says otherwise. ';
   out += 'If a correction is ambiguous or impossible, skip it and say so at the end.\n';
   Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
     out += '\nSlide ' + (p || '(unknown)') + ':\n';
     groups[p].forEach(n => {
       const a = anchors[n.uid] || {};
       let where = '';
+      const at = (a.x !== undefined) ? ' The pin is at about x=' + a.x + 'pt, y=' + a.y + 'pt from the slide top-left.' : '';
       if (n.shapeName) where = 'On the object named "' + n.shapeName + '": ';
-      else if (a.obj) where = 'On the object named "' + a.obj + '" (the pin sits on it): ';
-      else if (a.region) where = 'In the ' + a.region + ' area of the slide: ';
+      else if (a.obj && a.isGroup) where = 'On the element inside the group "' + a.obj + '" that sits under the pin \u2014 NOT the whole group.' + at + ' Correction: ';
+      else if (a.obj) where = 'On the object named "' + a.obj + '" (the pin sits on it).' + at + ' Correction: ';
+      else if (a.region) where = 'In the ' + a.region + ' area of the slide' + (at ? ' \u2014' + at : '') + ' Correction: ';
       out += '- ' + where + n.text + '\n';
     });
   });
