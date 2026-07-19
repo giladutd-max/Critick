@@ -77,6 +77,9 @@
     <button id="copyList">Copy list</button>
     <button id="dlList">Download .txt</button>
   </div>
+  <div class="row" style="margin-top:6px;">
+    <button id="clearPins" title="Delete all CriTick pin shapes from the slides">Remove pins from slides</button>
+  </div>
   <div id="savedflag"></div>
 </footer>
 
@@ -100,6 +103,9 @@ Office.onReady(info => {
     const raw = Office.context.document.settings.get(KEY);
     if (raw) notes = JSON.parse(raw);
   }catch(e){}
+  let mx = 0;
+  notes.forEach(n => { if (n.pinNum > mx) mx = n.pinNum; });
+  notes.forEach(n => { if (!n.pinNum) n.pinNum = ++mx; if (!n.uid) n.uid = 'm' + n.ts; });
   refreshSlideMap().then(drawNotes);
   watchSelection();
 });
@@ -162,7 +168,13 @@ async function addNote(){
       const slideId = sel.items.length ? sel.items[0].id : null;
       const shapeName = shapes.items.length ? shapes.items[0].name : null;
       if (!slideId){ toast('Click a slide first'); return; }
-      notes.push({slideId, shapeName, text, done: false, ts: Date.now()});
+      let pinNum = 0;
+      notes.forEach(n => { if (n.pinNum > pinNum) pinNum = n.pinNum; });
+      pinNum++;
+      const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+      notes.push({uid, pinNum, slideId, shapeName, text, done: false, ts: Date.now()});
+      insertPin(ctx, slideId, uid, pinNum);
+      await ctx.sync();
       persist();
       $('noteinput').value = '';
     });
@@ -177,11 +189,82 @@ async function addNote(){
 $('addbtn').addEventListener('click', addNote);
 $('noteinput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
 
+/* ---------- pins on the slide ---------- */
+const PIN = '#A83254', PIN_DONE = '#2E7D5B';
+
+function insertPin(ctx, slideId, uid, pinNum){
+  try{
+    const slide = ctx.presentation.slides.getItem(slideId);
+    const k = (pinNum - 1) % 8;
+    const shape = slide.shapes.addGeometricShape(PowerPoint.GeometricShapeType.ellipse,
+      {left: 14 + k * 30, top: 14, width: 26, height: 26});
+    shape.name = 'CriTickPin-' + uid;
+    shape.fill.setSolidColor(PIN);
+    const tr = shape.textFrame.textRange;
+    tr.text = String(pinNum);
+    tr.font.size = 11;
+    tr.font.bold = true;
+    tr.font.color = '#FFFFFF';
+    try{ tr.paragraphFormat.horizontalAlignment = 'Center'; }catch(e){}
+  }catch(e){
+    toast('Pin shape not supported in this PowerPoint version');
+  }
+}
+
+async function recolorPin(note){
+  try{
+    await PowerPoint.run(async ctx => {
+      const slide = ctx.presentation.slides.getItem(note.slideId);
+      const shapes = slide.shapes;
+      shapes.load('items/name');
+      await ctx.sync();
+      const sh = shapes.items.find(x => x.name === 'CriTickPin-' + note.uid);
+      if (sh) sh.fill.setSolidColor(note.done ? PIN_DONE : PIN);
+      await ctx.sync();
+    });
+  }catch(e){}
+}
+
+async function deletePin(note){
+  try{
+    await PowerPoint.run(async ctx => {
+      const slide = ctx.presentation.slides.getItem(note.slideId);
+      const shapes = slide.shapes;
+      shapes.load('items/name');
+      await ctx.sync();
+      const sh = shapes.items.find(x => x.name === 'CriTickPin-' + note.uid);
+      if (sh) sh.delete();
+      await ctx.sync();
+    });
+  }catch(e){}
+}
+
+async function clearAllPins(){
+  try{
+    await PowerPoint.run(async ctx => {
+      const slides = ctx.presentation.slides;
+      slides.load('items/id');
+      await ctx.sync();
+      slides.items.forEach(sl => sl.shapes.load('items/name'));
+      await ctx.sync();
+      let n = 0;
+      slides.items.forEach(sl => {
+        sl.shapes.items.forEach(sh => {
+          if (sh.name && sh.name.indexOf('CriTickPin-') === 0){ sh.delete(); n++; }
+        });
+      });
+      await ctx.sync();
+      toast(n ? n + ' pins removed from the slides' : 'No pins on the slides');
+    });
+  }catch(e){ toast('Could not remove pins'); }
+}
+document.getElementById('clearPins').addEventListener('click', clearAllPins);
+
 /* ---------- list ---------- */
 function drawNotes(){
   const el = $('notes');
   if (!notes.length){
-    el.innerHTML = '<div class="empty">On the call, click the slide (or the exact object) being discussed,<br>write the correction, press Enter.</div>';
+    el.innerHTML = '<div class="empty">Write a correction and press Enter \u2014<br>a numbered pin appears on the slide.<br>Drag it to the exact spot.</div>';
     return;
   }
   // group by slide position, unknown slides (deleted) last
@@ -203,7 +286,7 @@ function drawNotes(){
     groups[p].forEach(({n, i}) => {
       const row = document.createElement('div');
       row.className = 'note' + (n.done ? ' done' : '');
-      row.innerHTML = '<div class="num">' + (i+1) + '</div>' +
+      row.innerHTML = '<div class="num">' + n.pinNum + '</div>' +
         '<div class="body"><div class="txt"></div></div>' +
         '<div class="acts"><button class="chk" title="Mark done">✓</button><button class="del" title="Delete">✕</button></div>';
       row.querySelector('.txt').textContent = n.text;
@@ -214,8 +297,8 @@ function drawNotes(){
         row.querySelector('.body').appendChild(tag);
       }
       row.addEventListener('click', () => goTo(n.slideId));
-      row.querySelector('.chk').addEventListener('click', e => { e.stopPropagation(); n.done = !n.done; persist(); drawNotes(); });
-      row.querySelector('.del').addEventListener('click', e => { e.stopPropagation(); notes.splice(i,1); persist(); drawNotes(); });
+      row.querySelector('.chk').addEventListener('click', e => { e.stopPropagation(); n.done = !n.done; recolorPin(n); persist(); drawNotes(); });
+      row.querySelector('.del').addEventListener('click', e => { e.stopPropagation(); deletePin(n); notes.splice(i,1); persist(); drawNotes(); });
       el.appendChild(row);
     });
   });
@@ -254,7 +337,7 @@ function listText(){
   Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
     out += '\nSlide ' + (p === 9999 ? '(deleted)' : p) + '\n';
     groups[p].forEach(({n, i}) => {
-      out += '  ' + (n.done ? '[v]' : '[ ]') + ' ' + (i+1) + '. ' + (n.shapeName ? '[' + n.shapeName + '] ' : '') + n.text + '\n';
+      out += '  ' + (n.done ? '[v]' : '[ ]') + ' ' + n.pinNum + '. ' + (n.shapeName ? '[' + n.shapeName + '] ' : '') + n.text + '\n';
     });
   });
   const open = notes.filter(n=>!n.done).length;
