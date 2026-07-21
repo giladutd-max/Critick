@@ -123,6 +123,7 @@
   <div id="savedflag"></div>
 </footer>
 
+<input type="file" id="imgpick" accept="image/png,image/jpeg" style="display:none;">
 <div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
@@ -164,7 +165,7 @@ const STR = {
     personName: 'Name',
     filterLabel: 'Show',
     everyone: 'Everyone',
-    emptyNew: 'Write a correction, press Enter — then drag the pin into place.',
+    emptyNew: 'Write what to change — the pin will say where. Press Enter, then drag the pin onto the thing.',
     emptyFilter: 'No notes for this filter.',
     slideWord: 'Slide',
     slideMeta: 'slide',
@@ -201,7 +202,10 @@ const STR = {
     copyClaudeTip: 'Copy all open corrections as instructions to paste into the Claude pane',
     tNothingOpen: 'No open corrections',
     tClaudeCopied: 'Copied — paste into the Claude pane',
-    copyHint: 'Press ⌘C to copy, then paste into the Claude pane · Esc to close'
+    copyHint: 'Press ⌘C to copy, then paste into the Claude pane · Esc to close',
+    imgTip: 'Place an image at this pin',
+    tImgPlaced: 'Image placed at the pin — adjust and 👍 when done',
+    tImgFail: 'Could not place the image'
   }
 };
 function t(key){ return STR[lang][key]; }
@@ -698,7 +702,7 @@ function buildRow(n, p){
   row.innerHTML = '<div class="num"></div>' +
     '<div class="body"><div class="txt"></div><div class="meta"></div></div>' +
     '<div class="acts">' +
-      (n.status === 'open' ? '<button class="eye">👁</button>' : '') +
+      (n.status === 'open' ? '<button class="eye">👁</button><button class="img-btn">🖼</button>' : '') +
       '<button class="st-btn">👍</button>' +
       '<button class="del">✕</button>' +
     '</div>';
@@ -774,6 +778,14 @@ function buildRow(n, p){
       persist(); drawNotes();
     });
   }
+  const imgBtn = row.querySelector('.img-btn');
+  if (imgBtn){
+    imgBtn.title = t('imgTip');
+    imgBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      pickImageFor(n);
+    });
+  }
   const stBtn = row.querySelector('.st-btn');
   stBtn.title = n.status === 'fixed' ? t('reopenTip') : t('fixTip');
   stBtn.addEventListener('click', async e => {
@@ -793,7 +805,7 @@ function buildRow(n, p){
     pushUndo({type:'delete', note: JSON.parse(JSON.stringify(n))});
     persist(); drawNotes();
   });
-  row.addEventListener('click', () => { if (n.hidden || n.filterHidden || n.status === 'fixed') goTo(n.slideId); else selectPin(n); });
+  row.addEventListener('click', () => goTo(n.slideId));
   return row;
 }
 
@@ -933,6 +945,61 @@ function persist(){
   }catch(e){}
 }
 
+/* ================= place image at pin ================= */
+let imgTarget = null;
+function pickImageFor(n){
+  imgTarget = n;
+  $('imgpick').value = '';
+  $('imgpick').click();
+}
+$('imgpick').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  const n = imgTarget;
+  imgTarget = null;
+  if (!file || !n) return;
+  try{
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(new Error('read'));
+      r.readAsDataURL(file);
+    });
+    const dims = await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res({w: im.naturalWidth, h: im.naturalHeight});
+      im.onerror = () => rej(new Error('img'));
+      im.src = dataUrl;
+    });
+    // current pin position (live, in case it was dragged)
+    let px = null, py = null;
+    try{
+      await PowerPoint.run(async ctx => {
+        const sl = ctx.presentation.slides.getItem(n.slideId);
+        sl.shapes.load('items/name,items/left,items/top');
+        await ctx.sync();
+        const sh = sl.shapes.items.find(x => x.name === 'CriTickPin-' + n.uid);
+        if (sh){ px = sh.left; py = sh.top; }
+        try{ ctx.presentation.setSelectedSlides([n.slideId]); }catch(err){}
+        await ctx.sync();
+      });
+    }catch(err){}
+    if (px === null){ px = 120; py = 90; }
+    const targetW = 240;
+    const w = Math.min(targetW, dims.w);
+    const h = Math.round(w * dims.h / dims.w);
+    lastOp = Date.now();
+    const ok = await new Promise(res => {
+      Office.context.document.setSelectedDataAsync(dataUrl.split(',')[1], {
+        coercionType: Office.CoercionType.Image,
+        imageLeft: px, imageTop: py, imageWidth: w, imageHeight: h
+      }, r => res(r.status === Office.AsyncResultStatus.Succeeded));
+    });
+    toast(ok ? t('tImgPlaced') : t('tImgFail'));
+  }catch(err){
+    toast(t('tImgFail'));
+  }
+});
+
 /* ================= copy for Claude ================= */
 async function resolveAnchors(openNotes){
   const res = {};
@@ -995,6 +1062,9 @@ function claudePrompt(anchors){
   out += 'Ignore the small numbered circle images named CriTickPin-* \u2014 do not move, edit, or delete them. ';
   out += 'Rules: (1) When zooming into or cropping an image, CROP it \u2014 never stretch it or change its aspect ratio. ';
   out += '(2) A correction applies to the single element at the pin position given \u2014 when that element is inside a group, act only on that element, never on the whole group, unless the correction explicitly says otherwise. ';
+  out += '(3) Work fast: apply text and simple property changes directly \u2014 do not capture or visually inspect slides for them. ';
+  out += 'Only look at a slide visually when the correction requires visual judgment (cropping, alignment, color). ';
+  out += 'Do not visually re-verify after each edit; at most one quick check at the end, only for the visual corrections. ';
   out += 'If a correction is ambiguous or impossible, skip it and say so at the end.\n';
   Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
     out += '\nSlide ' + (p || '(unknown)') + ':\n';
@@ -1002,10 +1072,22 @@ function claudePrompt(anchors){
       const a = anchors[n.uid] || {};
       let where = '';
       const at = (a.x !== undefined) ? ' The pin is at about x=' + a.x + 'pt, y=' + a.y + 'pt from the slide top-left.' : '';
-      if (n.shapeName) where = 'On the object named "' + n.shapeName + '": ';
-      else if (a.obj && a.isGroup) where = 'On the element inside the group "' + a.obj + '" that sits under the pin \u2014 NOT the whole group.' + at + ' Correction: ';
-      else if (a.obj) where = 'On the object named "' + a.obj + '" (the pin sits on it).' + at + ' Correction: ';
-      else if (a.region) where = 'In the ' + a.region + ' area of the slide' + (at ? ' \u2014' + at : '') + ' Correction: ';
+      const groupish = nm => !!nm && nm.indexOf('Group') === 0;
+      if (n.shapeName && (groupish(n.shapeName) || a.isGroup) && at){
+        where = 'On the element inside the group "' + n.shapeName + '" that sits under the pin \u2014 NOT the whole group.' + at + ' Correction: ';
+      }
+      else if (n.shapeName){
+        where = 'On the object named "' + n.shapeName + '".' + at + ' Correction: ';
+      }
+      else if (a.obj && a.isGroup){
+        where = 'On the element inside the group "' + a.obj + '" that sits under the pin \u2014 NOT the whole group.' + at + ' Correction: ';
+      }
+      else if (a.obj){
+        where = 'On the object named "' + a.obj + '" (the pin sits on it).' + at + ' Correction: ';
+      }
+      else if (a.region){
+        where = 'In the ' + a.region + ' area of the slide' + (at ? ' \u2014' + at : '.') + ' Correction: ';
+      }
       out += '- ' + where + n.text + '\n';
     });
   });
