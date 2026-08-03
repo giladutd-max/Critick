@@ -1240,13 +1240,14 @@ async function captureFromSelection(cat){
       const sl = ctx.presentation.slides.getItem(sel.slideId);
       const sh = sl.shapes.getItem(sel.shape.id);
       sh.load('left,top,width,height');
-      let font = null;
-      try{ font = sh.textFrame.textRange.font; font.load('size,name,color,bold'); }catch(e){}
       await ctx.sync();
       def = {left: sh.left, top: sh.top, width: sh.width, height: sh.height,
              src: {slideId: sel.slideId, shapeId: sel.shape.id, shapeName: sel.shape.name || null}};
       try{
-        if (font) def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
+        const font = sh.textFrame.textRange.font;
+        font.load('size,name,color,bold');
+        await ctx.sync();
+        def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
       }catch(e){}
     });
     layouts[cat.key] = def;
@@ -1277,11 +1278,11 @@ async function refreshDefFromSrc(catKey){
       if (!sh) return;
       found = true;
       def.left = sh.left; def.top = sh.top; def.width = sh.width; def.height = sh.height;
-      let font = null;
-      try{ font = sh.textFrame.textRange.font; font.load('size,name,color,bold'); }catch(e){}
-      await ctx.sync();
       try{
-        if (font) def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
+        const font = sh.textFrame.textRange.font;
+        font.load('size,name,color,bold');
+        await ctx.sync();
+        def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
       }catch(e){}
     });
     persistLayouts();
