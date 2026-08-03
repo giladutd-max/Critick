@@ -1274,7 +1274,7 @@ async function applyToSelection(cat){
   if (!layouts[cat.key]) return;
   const sel = await getSelection();
   const d0 = layouts[cat.key];
-  if (sel.shape && d0.src && String(d0.src.shapeId) === String(sel.shape.id)){
+  if (sel.shape && d0.src && String(d0.src.shapeId) === String(sel.shape.id) && String(d0.src.slideId) === String(sel.slideId)){
     // the master itself was clicked: re-learn the layout from it, never snap it back
     await captureFromSelection(cat);
     return;
@@ -1302,8 +1302,8 @@ async function applyToSelection(cat){
       }
       await ctx.sync();
     });
-    bindings = bindings.filter(b => b.shapeId !== sel.shape.id);
-    if (!def.src || def.src.shapeId !== sel.shape.id){
+    bindings = bindings.filter(b => !(String(b.shapeId) === String(sel.shape.id) && String(b.slideId) === String(sel.slideId)));
+    if (!def.src || String(def.src.shapeId) !== String(sel.shape.id) || String(def.src.slideId) !== String(sel.slideId)){
       bindings.push({cat: cat.key, slideId: sel.slideId, shapeId: sel.shape.id});
     }
     persistBindings();
@@ -1374,9 +1374,10 @@ $('updateAllBtn').addEventListener('click', async () => {
           cats.forEach(k => {
             const od = oldDefs[k];
             if (!od) return;
-            if (layouts[k] && layouts[k].src && layouts[k].src.shapeId === sh.id) return; // the master itself
+            if (layouts[k] && layouts[k].src && String(layouts[k].src.shapeId) === String(sh.id) && String(layouts[k].src.slideId) === String(sid)) return; // the master itself
             if (Math.abs(sh.left - od.left) <= TOL && Math.abs(sh.top - od.top) <= TOL){
-              if (!seen[sh.id]){ seen[sh.id] = true; targets.push({cat: k, slideId: sid, shapeId: sh.id}); }
+              const key = sid + '|' + sh.id;
+              if (!seen[key]){ seen[key] = true; targets.push({cat: k, slideId: sid, shapeId: sh.id}); }
             }
           });
         });
@@ -1385,7 +1386,8 @@ $('updateAllBtn').addEventListener('click', async () => {
     // union with recorded bindings (precise, survives layout moves)
     bindings.forEach(b => {
       if (!layouts[b.cat]) return;
-      if (!seen[b.shapeId]){ seen[b.shapeId] = true; targets.push(b); }
+      const key = b.slideId + '|' + b.shapeId;
+      if (!seen[key]){ seen[key] = true; targets.push(b); }
     });
     if (!targets.length){
       toast('Found nothing \u2014 cats:' + cats.length + ' \u00b7 masters located:' + mastersLocated + '/' + cats.length +
@@ -1398,7 +1400,7 @@ $('updateAllBtn').addEventListener('click', async () => {
       const ok = await applyDefTo(tg.slideId, tg.shapeId, layouts[tg.cat]);
       if (ok){
         done++;
-        if (!bindings.some(b => b.shapeId === tg.shapeId)) bindings.push(tg);
+        if (!bindings.some(b => String(b.shapeId) === String(tg.shapeId) && String(b.slideId) === String(tg.slideId))) bindings.push(tg);
       }
     }
     persistBindings();
