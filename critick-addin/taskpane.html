@@ -1454,6 +1454,111 @@ async function syncLayoutDefs(){
   }catch(e){}
 }
 
+/* ================= icon library ================= */
+const ICONS_API = 'https://api.github.com/repos/giladutd-max/Critick/contents/critick-addin/icons';
+
+$('iconsToggle').addEventListener('click', async () => {
+  const grid = $('icongrid');
+  const on = !grid.classList.contains('on');
+  grid.classList.toggle('on', on);
+  grid.style.display = on ? 'grid' : 'none';
+  if (on) await loadIcons();
+});
+
+async function loadIcons(){
+  const grid = $('icongrid');
+  grid.innerHTML = '<div class="iconmsg">…</div>';
+  try{
+    const r = await fetch(ICONS_API);
+    if (!r.ok) throw new Error('http ' + r.status);
+    const files = (await r.json()).filter(f => f.name.toLowerCase().endsWith('.svg'));
+    grid.innerHTML = '';
+    if (!files.length){
+      grid.innerHTML = '<div class="iconmsg">' + t('iconsEmpty') + '</div>';
+      return;
+    }
+    files.forEach(f => {
+      const b = document.createElement('button');
+      b.title = f.name.replace(/\.svg$/i, '');
+      const im = document.createElement('img');
+      im.src = f.download_url;
+      im.alt = f.name;
+      b.appendChild(im);
+      b.addEventListener('click', () => insertIcon(f.download_url));
+      grid.appendChild(b);
+    });
+  }catch(e){
+    grid.innerHTML = '<div class="iconmsg">' + t('iconsLoadFail') + '</div>';
+  }
+}
+
+function svgToPngBase64(svgText, px){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = px; c.height = px;
+      c.getContext('2d').drawImage(img, 0, 0, px, px);
+      res(c.toDataURL('image/png').split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+  });
+}
+
+async function insertIcon(url){
+  try{
+    const svg = await (await fetch(url)).text();
+    lastOp = Date.now();
+    const opts = {imageLeft: 40, imageTop: 40, imageWidth: 60, imageHeight: 60};
+    const okVector = await new Promise(res => {
+      try{
+        Office.context.document.setSelectedDataAsync(svg, Object.assign({coercionType: Office.CoercionType.XmlSvg}, opts),
+          r => res(r.status === Office.AsyncResultStatus.Succeeded));
+      }catch(e){ res(false); }
+    });
+    if (okVector) return;
+    const png = await svgToPngBase64(svg, 256);
+    const okPng = await new Promise(res => {
+      Office.context.document.setSelectedDataAsync(png, Object.assign({coercionType: Office.CoercionType.Image}, opts),
+        r => res(r.status === Office.AsyncResultStatus.Succeeded));
+    });
+    if (!okPng) toast(t('tIconFail'));
+  }catch(e){ toast(t('tIconFail')); }
+}
+
+/* ================= template slides ================= */
+$('insertSlidesBtn').addEventListener('click', () => {
+  $('slidepick').value = '';
+  $('slidepick').click();
+});
+$('slidepick').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try{
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(new Error('read'));
+      r.readAsDataURL(file);
+    });
+    const b64 = dataUrl.split(',')[1];
+    lastOp = Date.now();
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      await ctx.sync();
+      const opts = {formatting: 'KeepSourceFormatting'};
+      if (sel.items.length) opts.targetSlideId = sel.items[0].id;
+      ctx.presentation.insertSlidesFromBase64(b64, opts);
+      await ctx.sync();
+    });
+    await refreshSlideMap();
+    drawNotes();
+    toast(t('tSlidesInserted'));
+  }catch(err){ toast(t('tSlidesFail')); }
+});
+
 /* ================= notes as text on slides ================= */
 function labelStyle(tb){
   try{
