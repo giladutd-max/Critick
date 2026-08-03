@@ -255,7 +255,7 @@ const STR = {
     arrangeTip: 'Drop category pins on messy elements, then press to snap them to the saved layout',
     teach: 'Save layout',
     teachTip: 'Turn on, select a correctly placed element, then click its category to save it',
-    teachOn: 'Now click the category to save the selected element',
+    teachOn: 'Choose a category to save this element — changing the selection cancels',
     selNone: 'Nothing selected on the slide',
     selPrefix: 'Selected: ',
     tTaught: c => c + ' layout saved',
@@ -488,6 +488,11 @@ async function updateAnchor(){
         id: nonPin ? nonPin.id : null,
         name: nonPin ? nonPin.name : null
       };
+      if (teachMode && lastSel.id !== armedSelId){
+        teachMode = false;
+        armedSelId = null;
+        drawCats();
+      }
       renderTeachSel();
       if (selName && selName.indexOf('CriTickPin-') === 0){
         highlightNote(selName.slice('CriTickPin-'.length));
@@ -1126,6 +1131,7 @@ function persistLayouts(){
 }
 
 let teachMode = false;
+let armedSelId = null;
 let lastLayoutSync = 0;
 let lastSel = {slideId: null, id: null, name: null};
 
@@ -1141,8 +1147,8 @@ function drawCats(){
     sq.style.background = cat.color;
     sq.textContent = cat.letter;
     b.appendChild(sq);
-    b.appendChild(document.createTextNode(cat.label));
-    if (layouts[cat.key]){
+    b.appendChild(document.createTextNode((teachMode ? 'Save as ' : '') + cat.label));
+    if (!teachMode && layouts[cat.key]){
       const ok = document.createElement('span');
       ok.className = 'has';
       ok.textContent = '✓';
@@ -1171,7 +1177,17 @@ function renderTeachSel(){
     el.textContent = t('selNone');
   }
 }
-$('teachBtn').addEventListener('click', () => { teachMode = !teachMode; drawCats(); });
+$('teachBtn').addEventListener('click', () => {
+  if (!teachMode){
+    if (!lastSel.id){ toast(t('tSelectFirst')); return; }
+    armedSelId = lastSel.id;
+    teachMode = true;
+  } else {
+    teachMode = false;
+    armedSelId = null;
+  }
+  drawCats();
+});
 
 async function getSelection(){
   let slideId = null, shape = null;
@@ -1214,6 +1230,7 @@ async function captureFromSelection(cat){
     layouts[cat.key] = def;
     persistLayouts();
     teachMode = false;
+    armedSelId = null;
     drawCats();
     toast(t('tTaught')(cat.label));
   }catch(e){ toast(t('tLayoutFail')); }
