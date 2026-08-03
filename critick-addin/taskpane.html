@@ -314,6 +314,10 @@ Office.onReady(info => {
     const rawP = Office.context.document.settings.get(KEY_PEOPLE);
     if (rawP) people = JSON.parse(rawP);
   }catch(e){}
+  try{
+    const rawL = Office.context.document.settings.get(KEY_LAYOUTS);
+    if (rawL) layouts = JSON.parse(rawL);
+  }catch(e){}
   Object.keys(ROSTER).forEach(n => { if (!people[n]) people[n] = ROSTER[n]; });
   let mx = 0;
   notes.forEach(n => { if (n.pinNum > mx) mx = n.pinNum; });
@@ -1112,8 +1116,14 @@ const CATS = [
   {key:'description', label:'Description', letter:'D', color:'#0E9F6E'},
   {key:'fabric', label:'Fabric', letter:'F', color:'#D97706'}
 ];
+const KEY_LAYOUTS = 'critick-layouts';
 let layouts = {};
-try{ layouts = JSON.parse(localStorage.getItem('critick-layouts-v2') || '{}'); }catch(e){}
+function persistLayouts(){
+  try{
+    Office.context.document.settings.set(KEY_LAYOUTS, JSON.stringify(layouts));
+    Office.context.document.settings.saveAsync(()=>{});
+  }catch(e){}
+}
 
 let teachMode = false;
 let lastLayoutSync = 0;
@@ -1202,7 +1212,7 @@ async function captureFromSelection(cat){
       }catch(e){}
     });
     layouts[cat.key] = def;
-    try{ localStorage.setItem('critick-layouts-v2', JSON.stringify(layouts)); }catch(e){}
+    persistLayouts();
     teachMode = false;
     drawCats();
     toast(t('tTaught')(cat.label));
@@ -1281,7 +1291,7 @@ async function syncLayoutDefs(){
         }catch(e){}
       });
     });
-    try{ localStorage.setItem('critick-layouts-v2', JSON.stringify(layouts)); }catch(e){}
+    persistLayouts();
   }catch(e){}
 }
 
