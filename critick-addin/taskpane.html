@@ -1148,7 +1148,8 @@ const CATS = [
   {key:'header', label:'Header', letter:'H', color:'#1C1B1A'},
   {key:'tagline', label:'Tagline', letter:'T', color:'#2563EB'},
   {key:'description', label:'Description', letter:'D', color:'#0E9F6E'},
-  {key:'fabric', label:'Fabric', letter:'F', color:'#D97706'}
+  {key:'fabric', label:'Fabric', letter:'F', color:'#D97706'},
+  {key:'image', label:'Image', letter:'I', color:'#475569'}
 ];
 const KEY_LAYOUTS = 'critick-layouts';
 const KEY_BINDINGS = 'critick-bindings';
@@ -1306,6 +1307,17 @@ async function applyToSelection(cat){
     await PowerPoint.run(async ctx => {
       const sl = ctx.presentation.slides.getItem(sel.slideId);
       const sh = sl.shapes.getItem(sel.shape.id);
+      if (cat.key === 'image'){
+        sh.load('width,height');
+        await ctx.sync();
+        const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
+        sh.left = def.left;
+        sh.top = def.top;
+        sh.width = def.width;
+        sh.height = def.width * ratio;
+        await ctx.sync();
+        return;
+      }
       sh.left = def.left;
       sh.top = def.top;
       sh.width = def.width;
@@ -1330,14 +1342,20 @@ async function applyToSelection(cat){
   }catch(e){ toast(t('tLayoutFail')); }
 }
 
-async function applyDefTo(slideId, shapeId, def){
+async function applyDefTo(slideId, shapeId, def, catKey){
   const attempt = async withFont => {
     await PowerPoint.run(async ctx => {
       const sl = ctx.presentation.slides.getItem(slideId);
-      sl.shapes.load('items/id,items/name');
+      sl.shapes.load('items/id,items/name,items/width,items/height');
       await ctx.sync();
       const sh = sl.shapes.items.find(x => String(x.id) === String(shapeId));
       if (!sh) throw new Error('gone');
+      if (catKey === 'image'){
+        const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
+        sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.width * ratio;
+        await ctx.sync();
+        return;
+      }
       sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.height;
       if (withFont && def.font){
         const fo = sh.textFrame.textRange.font;
@@ -1416,7 +1434,7 @@ $('updateAllBtn').addEventListener('click', async () => {
     lastOp = Date.now();
     let done = 0;
     for (const tg of targets){
-      const ok = await applyDefTo(tg.slideId, tg.shapeId, layouts[tg.cat]);
+      const ok = await applyDefTo(tg.slideId, tg.shapeId, layouts[tg.cat], tg.cat);
       if (ok){
         done++;
         if (!bindings.some(b => String(b.shapeId) === String(tg.shapeId) && String(b.slideId) === String(tg.slideId))) bindings.push(tg);
