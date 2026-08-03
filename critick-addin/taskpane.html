@@ -268,6 +268,8 @@ const STR = {
     tReset: 'Layout cleared \u2014 select each correct element and click its category to teach it',
     tTaught: c => c + ' \u2713 saved',
     tSnapped: c => 'Snapped to ' + c + ' layout',
+    tImgSlotSaved: n => 'Image ' + n + ' \u2713 saved',
+    tImgSnapped: n => 'Snapped to Image ' + n,
     tSelectFirst: 'Select an element on the slide first',
     updateAll: 'Re-arrange all',
     updateAllTip: 'Snap every element that was ever arranged back to the layout\u2019s current positions',
@@ -348,6 +350,7 @@ Office.onReady(info => {
     const rawL = Office.context.document.settings.get(KEY_LAYOUTS);
     if (rawL) layouts = JSON.parse(rawL);
   }catch(e){}
+  if (layouts.image && !layouts.image1){ layouts.image1 = layouts.image; delete layouts.image; }
   try{
     const rawB = Office.context.document.settings.get(KEY_BINDINGS);
     if (rawB) bindings = JSON.parse(rawB);
@@ -1171,16 +1174,94 @@ function persistLayouts(){
 let lastLayoutSync = 0;
 let lastSel = {slideId: null, id: null, name: null, ts: 0};
 
+function imageKeys(){
+  return Object.keys(layouts)
+    .filter(k => k.indexOf('image') === 0 && layouts[k])
+    .sort((a, b) => parseInt(a.slice(5) || '1') - parseInt(b.slice(5) || '1'));
+}
+function imageSlotNum(k){ return parseInt(k.slice(5) || '1'); }
+
+async function captureImageSlot(key, sel){
+  try{
+    let def = null;
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.load('left,top,width,height');
+      await ctx.sync();
+      def = {left: sh.left, top: sh.top, width: sh.width, height: sh.height,
+             src: {slideId: sel.slideId, shapeId: sel.shape.id, shapeName: sel.shape.name || null}};
+    });
+    layouts[key] = def;
+    persistLayouts();
+    drawCats();
+    toast(t('tImgSlotSaved')(imageSlotNum(key)));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
+async function imageChipClick(){
+  if (!ready) return;
+  const sel = await getSelection();
+  if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
+  const keys = imageKeys();
+  // clicking an existing image mother = update that slot
+  const own = keys.find(k => layouts[k].src &&
+    String(layouts[k].src.shapeId) === String(sel.shape.id) &&
+    String(layouts[k].src.slideId) === String(sel.slideId));
+  if (own){ await captureImageSlot(own, sel); return; }
+  if (!keys.length){ await captureImageSlot('image1', sel); return; }
+  const motherSlide = layouts[keys[0]].src ? layouts[keys[0]].src.slideId : null;
+  if (motherSlide && String(sel.slideId) === String(motherSlide)){
+    const next = Math.max.apply(null, keys.map(imageSlotNum)) + 1;
+    await captureImageSlot('image' + next, sel);
+    return;
+  }
+  // elsewhere: snap to the nearest slot
+  try{
+    for (const k of keys) await refreshDefFromSrc(k);
+    let target = null;
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.load('left,top,width,height');
+      await ctx.sync();
+      const cx = sh.left + sh.width / 2, cy = sh.top + sh.height / 2;
+      let best = null, bestD = Infinity;
+      keys.forEach(k => {
+        const d = layouts[k];
+        const dx = (d.left + d.width / 2) - cx, dy = (d.top + d.height / 2) - cy;
+        const dist = dx * dx + dy * dy;
+        if (dist < bestD){ bestD = dist; best = k; }
+      });
+      target = best;
+      const def = layouts[target];
+      const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
+      sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.width * ratio;
+      await ctx.sync();
+    });
+    if (target){
+      bindings = bindings.filter(b => !(String(b.shapeId) === String(sel.shape.id) && String(b.slideId) === String(sel.slideId)));
+      bindings.push({cat: target, slideId: sel.slideId, shapeId: sel.shape.id});
+      persistBindings();
+      toast(t('tImgSnapped')(imageSlotNum(target)));
+    }
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
 function drawCats(){
   const el = $('catchips');
   el.innerHTML = '';
   CATS.forEach(cat => {
-    const saved = !!layouts[cat.key];
+    const isImg = cat.key === 'image';
+    const imgCount = isImg ? imageKeys().length : 0;
+    const saved = isImg ? imgCount > 0 : !!layouts[cat.key];
     const b = document.createElement('button');
     b.className = 'cat-chip';
-    b.title = saved
-      ? ('Snap the selected element to the ' + cat.label + ' layout')
-      : ('Save the selected element as the ' + cat.label + ' layout');
+    b.title = isImg
+      ? 'On the mother slide: save this image as a slot. Anywhere else: snap the selected image to the nearest slot.'
+      : (saved
+        ? ('Snap the selected element to the ' + cat.label + ' layout')
+        : ('Save the selected element as the ' + cat.label + ' layout'));
     const sq = document.createElement('span');
     sq.className = 'sq';
     sq.style.background = cat.color;
@@ -1190,10 +1271,11 @@ function drawCats(){
     if (saved){
       const ok = document.createElement('span');
       ok.className = 'has';
-      ok.textContent = '\u2713';
+      ok.textContent = '\u2713' + (imgCount > 1 ? imgCount : '');
       b.appendChild(ok);
     }
-    b.addEventListener('click', () => saved ? applyToSelection(cat) : captureFromSelection(cat));
+    if (isImg) b.addEventListener('click', imageChipClick);
+    else b.addEventListener('click', () => saved ? applyToSelection(cat) : captureFromSelection(cat));
     el.appendChild(b);
   });
   const tb = $('teachBtn');
@@ -1351,7 +1433,7 @@ async function applyDefTo(slideId, shapeId, def, catKey){
       await ctx.sync();
       const sh = sl.shapes.items.find(x => String(x.id) === String(shapeId));
       if (!sh) throw new Error('gone');
-      if (catKey === 'image'){
+      if (String(catKey || '').indexOf('image') === 0){
         const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
         sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.width * ratio;
         await ctx.sync();
