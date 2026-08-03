@@ -102,6 +102,7 @@
   footer button{flex:1; font-family:inherit; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px; cursor:pointer; color:var(--ink);}
   footer button:hover{border-color:#C9C5BC;}
   footer button.arm{background:var(--pin); color:#fff; border-color:var(--pin);}
+  #tplSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--bg); outline:none; min-width:0;}
   #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:6px; min-height:13px;}
 
   #claudebox{display:none; position:fixed; inset:0; background:rgba(28,27,26,.45); z-index:50; padding:20px 14px; }
@@ -156,10 +157,15 @@
     <button id="labelsBtn"></button>
   </div>
   <div class="row">
-    <button id="insertSlidesBtn"></button>
-    <button id="clearPins"></button>
+    <select id="tplSelect"></select>
+    <button id="tplInsertBtn"></button>
   </div>
   <div class="row">
+    <button id="tplAddBtn"></button>
+    <button id="tplRemoveBtn"></button>
+  </div>
+  <div class="row">
+    <button id="clearPins"></button>
     <button id="cleanBtn"></button>
   </div>
   <div id="savedflag"></div>
@@ -273,8 +279,16 @@ const STR = {
     iconsEmpty: 'No icons yet — upload .svg files to critick-addin/icons on GitHub',
     iconsLoadFail: 'Could not load the icon library',
     tIconFail: 'Could not insert the icon',
-    insertSlides: 'Insert template slides…',
-    insertSlidesTip: 'Pick a .pptx from the templates folder — its slides are added after the current slide, fully editable',
+    tplChoose: 'Choose a template…',
+    tplInsert: 'Insert',
+    tplInsertTip: 'Insert this template\u2019s slides after the current slide, fully editable',
+    tplAdd: '+ Add template…',
+    tplAddTip: 'Pick a .pptx once — it becomes a menu item on this computer (the file never leaves your machine)',
+    tplRemove: 'Remove',
+    tplRemoveTip: 'Remove the selected template from the menu',
+    tTplAdded: n => 'Template added: ' + n,
+    tTplRemoved: 'Template removed',
+    tTplNone: 'Choose a template first',
     tSlidesInserted: 'Template slides inserted',
     cleanSlate: 'Clean slate',
     cleanTip: 'Delete everything CriTick stored in this presentation \u2014 notes, layout, pins, labels',
@@ -297,8 +311,12 @@ function applyLang(){
   $('labelsBtn').title = t('labelsTip');
   $('iconsToggle').textContent = t('iconsToggle');
   $('iconsToggle').title = t('iconsTip');
-  $('insertSlidesBtn').textContent = t('insertSlides');
-  $('insertSlidesBtn').title = t('insertSlidesTip');
+  $('tplInsertBtn').textContent = t('tplInsert');
+  $('tplInsertBtn').title = t('tplInsertTip');
+  $('tplAddBtn').textContent = t('tplAdd');
+  $('tplAddBtn').title = t('tplAddTip');
+  $('tplRemoveBtn').textContent = t('tplRemove');
+  $('tplRemoveBtn').title = t('tplRemoveTip');
   $('cleanBtn').textContent = t('cleanSlate');
   $('cleanBtn').title = t('cleanTip');
   drawPeople();
@@ -1544,8 +1562,90 @@ async function insertIcon(url){
   }catch(e){ toast(t('tIconFail')); }
 }
 
-/* ================= template slides ================= */
-$('insertSlidesBtn').addEventListener('click', () => {
+/* ================= template library ================= */
+function tplDB(){
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('critick-templates', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('tpl', {keyPath: 'name'});
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function tplPut(rec){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('tpl', 'readwrite');
+    tx.objectStore('tpl').put(rec);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  }));
+}
+function tplAll(){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const rq = db.transaction('tpl').objectStore('tpl').getAll();
+    rq.onsuccess = () => res(rq.result || []);
+    rq.onerror = () => rej(rq.error);
+  }));
+}
+function tplGet(name){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const rq = db.transaction('tpl').objectStore('tpl').get(name);
+    rq.onsuccess = () => res(rq.result || null);
+    rq.onerror = () => rej(rq.error);
+  }));
+}
+function tplDel(name){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('tpl', 'readwrite');
+    tx.objectStore('tpl').delete(name);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  }));
+}
+
+async function drawTplMenu(){
+  const sel = $('tplSelect');
+  const cur = sel.value;
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = t('tplChoose');
+  sel.appendChild(o0);
+  try{
+    const list = await tplAll();
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    list.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name; o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }catch(e){}
+}
+
+async function insertTemplateB64(b64){
+  lastOp = Date.now();
+  await PowerPoint.run(async ctx => {
+    const sel = ctx.presentation.getSelectedSlides();
+    sel.load('items/id');
+    await ctx.sync();
+    const opts = {formatting: 'KeepSourceFormatting'};
+    if (sel.items.length) opts.targetSlideId = sel.items[0].id;
+    ctx.presentation.insertSlidesFromBase64(b64, opts);
+    await ctx.sync();
+  });
+  await refreshSlideMap();
+  drawNotes();
+}
+
+$('tplInsertBtn').addEventListener('click', async () => {
+  const name = $('tplSelect').value;
+  if (!name){ toast(t('tTplNone')); return; }
+  try{
+    const rec = await tplGet(name);
+    if (!rec){ toast(t('tTplNone')); return; }
+    await insertTemplateB64(rec.b64);
+    toast(t('tSlidesInserted'));
+  }catch(e){ toast(t('tSlidesFail')); }
+});
+
+$('tplAddBtn').addEventListener('click', () => {
   $('slidepick').value = '';
   $('slidepick').click();
 });
@@ -1559,24 +1659,27 @@ $('slidepick').addEventListener('change', async e => {
       r.onerror = () => rej(new Error('read'));
       r.readAsDataURL(file);
     });
-    const b64 = dataUrl.split(',')[1];
-    lastOp = Date.now();
-    await PowerPoint.run(async ctx => {
-      const sel = ctx.presentation.getSelectedSlides();
-      sel.load('items/id');
-      await ctx.sync();
-      const opts = {formatting: 'KeepSourceFormatting'};
-      if (sel.items.length) opts.targetSlideId = sel.items[0].id;
-      ctx.presentation.insertSlidesFromBase64(b64, opts);
-      await ctx.sync();
-    });
-    await refreshSlideMap();
-    drawNotes();
-    toast(t('tSlidesInserted'));
+    const name = file.name.replace(/\.pptx$/i, '');
+    await tplPut({name: name, b64: dataUrl.split(',')[1], ts: Date.now()});
+    await drawTplMenu();
+    $('tplSelect').value = name;
+    toast(t('tTplAdded')(name));
   }catch(err){ toast(t('tSlidesFail')); }
 });
 
-/* ================= notes as text on slides ================= */
+$('tplRemoveBtn').addEventListener('click', async () => {
+  const name = $('tplSelect').value;
+  if (!name){ toast(t('tTplNone')); return; }
+  try{
+    await tplDel(name);
+    await drawTplMenu();
+    toast(t('tTplRemoved'));
+  }catch(e){}
+});
+
+drawTplMenu();
+
+/* ================= notes as text on slides ================= *//* ================= notes as text on slides ================= */
 function labelStyle(tb){
   try{
     tb.fill.setSolidColor('#FFF9E8');
