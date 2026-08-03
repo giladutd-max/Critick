@@ -1098,7 +1098,7 @@ const CATS = [
   {key:'fabric', label:'Fabric', letter:'F', color:'#D97706'}
 ];
 let layouts = {};
-try{ layouts = JSON.parse(localStorage.getItem('critick-layouts') || '{}'); }catch(e){}
+try{ layouts = JSON.parse(localStorage.getItem('critick-layouts-v2') || '{}'); }catch(e){}
 
 let teachMode = false;
 let lastLayoutSync = 0;
@@ -1161,7 +1161,7 @@ async function captureFromSelection(cat){
       }catch(e){}
     });
     layouts[cat.key] = def;
-    try{ localStorage.setItem('critick-layouts', JSON.stringify(layouts)); }catch(e){}
+    try{ localStorage.setItem('critick-layouts-v2', JSON.stringify(layouts)); }catch(e){}
     teachMode = false;
     drawCats();
     toast(t('tTaught')(cat.label));
@@ -1240,7 +1240,7 @@ async function syncLayoutDefs(){
         }catch(e){}
       });
     });
-    try{ localStorage.setItem('critick-layouts', JSON.stringify(layouts)); }catch(e){}
+    try{ localStorage.setItem('critick-layouts-v2', JSON.stringify(layouts)); }catch(e){}
   }catch(e){}
 }
 
