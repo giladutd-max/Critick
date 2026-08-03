@@ -1332,10 +1332,17 @@ $('updateAllBtn').addEventListener('click', async () => {
     // remember where the layout USED to be, then refresh it live
     const oldDefs = JSON.parse(JSON.stringify(layouts));
     for (const k of cats) await refreshDefFromSrc(k);
+    let mastersFound = 0;
+    for (const k of cats){
+      const d = layouts[k];
+      if (d && d.src && (d.left !== oldDefs[k].left || d.top !== oldDefs[k].top || d.width !== oldDefs[k].width ||
+          JSON.stringify(d.font) !== JSON.stringify(oldDefs[k].font))) mastersFound++;
+    }
     // find every element sitting at an old-layout position
     const targets = []; // {cat, slideId, shapeId}
     const seen = {};
-    const TOL = 2;
+    const TOL = 6;
+    let scanned = 0, mastersLive = 0;
     await PowerPoint.run(async ctx => {
       const all = ctx.presentation.slides;
       all.load('items/id');
@@ -1349,11 +1356,12 @@ $('updateAllBtn').addEventListener('click', async () => {
       Object.keys(loaded).forEach(sid => {
         loaded[sid].shapes.items.forEach(sh => {
           if (((sh.name || '')).indexOf('CriTick') === 0) return;
+          scanned++;
           cats.forEach(k => {
             const od = oldDefs[k];
             if (!od) return;
             if (layouts[k] && layouts[k].src && layouts[k].src.shapeId === sh.id) return; // the master itself
-            if (Math.abs(sh.left - od.left) <= TOL && Math.abs(sh.top - od.top) <= TOL && Math.abs(sh.width - od.width) <= TOL){
+            if (Math.abs(sh.left - od.left) <= TOL && Math.abs(sh.top - od.top) <= TOL){
               if (!seen[sh.id]){ seen[sh.id] = true; targets.push({cat: k, slideId: sid, shapeId: sh.id}); }
             }
           });
@@ -1365,7 +1373,11 @@ $('updateAllBtn').addEventListener('click', async () => {
       if (!layouts[b.cat]) return;
       if (!seen[b.shapeId]){ seen[b.shapeId] = true; targets.push(b); }
     });
-    if (!targets.length){ toast(t('tNothingBound')); return; }
+    if (!targets.length){
+      toast('Found nothing \u2014 cats:' + cats.length + ' \u00b7 changed masters:' + mastersFound +
+            ' \u00b7 bindings:' + bindings.length + ' \u00b7 scanned:' + scanned);
+      return;
+    }
     lastOp = Date.now();
     let done = 0;
     for (const tg of targets){
