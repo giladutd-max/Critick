@@ -101,6 +101,7 @@
   footer .row{display:flex; gap:8px;}
   footer button{flex:1; font-family:inherit; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px; cursor:pointer; color:var(--ink);}
   footer button:hover{border-color:#C9C5BC;}
+  footer button.arm{background:var(--pin); color:#fff; border-color:var(--pin);}
   #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:6px; min-height:13px;}
 
   #claudebox{display:none; position:fixed; inset:0; background:rgba(28,27,26,.45); z-index:50; padding:20px 14px; }
@@ -157,6 +158,9 @@
   <div class="row">
     <button id="insertSlidesBtn"></button>
     <button id="clearPins"></button>
+  </div>
+  <div class="row">
+    <button id="cleanBtn"></button>
   </div>
   <div id="savedflag"></div>
 </footer>
@@ -262,7 +266,7 @@ const STR = {
     updateAll: 'Re-arrange all',
     updateAllTip: 'Snap every element that was ever arranged back to the layout\u2019s current positions',
     tUpdated: n => n + ' element' + (n === 1 ? '' : 's') + ' re-arranged',
-    tNothingBound: 'Nothing has been arranged yet',
+    tNothingBound: 'No elements matching the previous layout were found',
     tLayoutFail: 'Could not apply the layout',
     iconsToggle: 'Icons',
     iconsTip: 'Insert a team icon onto the current slide',
@@ -272,6 +276,10 @@ const STR = {
     insertSlides: 'Insert template slides…',
     insertSlidesTip: 'Pick a .pptx from the templates folder — its slides are added after the current slide, fully editable',
     tSlidesInserted: 'Template slides inserted',
+    cleanSlate: 'Clean slate',
+    cleanTip: 'Delete everything CriTick stored in this presentation \u2014 notes, layout, pins, labels',
+    cleanConfirm: 'Press again to wipe this presentation',
+    tCleaned: 'Clean \u2014 this presentation holds no CriTick data',
     tSlidesFail: 'Could not insert the slides'
   }
 };
@@ -291,6 +299,8 @@ function applyLang(){
   $('iconsToggle').title = t('iconsTip');
   $('insertSlidesBtn').textContent = t('insertSlides');
   $('insertSlidesBtn').title = t('insertSlidesTip');
+  $('cleanBtn').textContent = t('cleanSlate');
+  $('cleanBtn').title = t('cleanTip');
   drawPeople();
   drawCats();
   drawMeBar();
@@ -503,7 +513,6 @@ async function updateAnchor(){
       }
       clearHighlight();
       reconcilePins();
-      syncLayoutDefs();
       if (shapes.items.length){
         const nm = shapes.items[0].name;
         $('anchor').innerHTML = '';
@@ -1317,26 +1326,55 @@ async function applyDefTo(slideId, shapeId, def){
 
 $('updateAllBtn').addEventListener('click', async () => {
   if (!ready) return;
-  if (!bindings.length){ toast(t('tNothingBound')); return; }
+  const cats = Object.keys(layouts).filter(k => layouts[k]);
+  if (!cats.length){ toast(t('tNothingBound')); return; }
   try{
-    for (const k of Object.keys(layouts)) await refreshDefFromSrc(k);
-    let slideIds = {};
+    // remember where the layout USED to be, then refresh it live
+    const oldDefs = JSON.parse(JSON.stringify(layouts));
+    for (const k of cats) await refreshDefFromSrc(k);
+    // find every element sitting at an old-layout position
+    const targets = []; // {cat, slideId, shapeId}
+    const seen = {};
+    const TOL = 2;
     await PowerPoint.run(async ctx => {
       const all = ctx.presentation.slides;
       all.load('items/id');
       await ctx.sync();
-      all.items.forEach(sl => { slideIds[sl.id] = true; });
+      const loaded = {};
+      all.items.forEach(sl => {
+        loaded[sl.id] = ctx.presentation.slides.getItem(sl.id);
+        loaded[sl.id].shapes.load('items/id,items/name,items/left,items/top,items/width');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(sid => {
+        loaded[sid].shapes.items.forEach(sh => {
+          if (((sh.name || '')).indexOf('CriTick') === 0) return;
+          cats.forEach(k => {
+            const od = oldDefs[k];
+            if (!od) return;
+            if (layouts[k] && layouts[k].src && layouts[k].src.shapeId === sh.id) return; // the master itself
+            if (Math.abs(sh.left - od.left) <= TOL && Math.abs(sh.top - od.top) <= TOL && Math.abs(sh.width - od.width) <= TOL){
+              if (!seen[sh.id]){ seen[sh.id] = true; targets.push({cat: k, slideId: sid, shapeId: sh.id}); }
+            }
+          });
+        });
+      });
     });
+    // union with recorded bindings (precise, survives layout moves)
+    bindings.forEach(b => {
+      if (!layouts[b.cat]) return;
+      if (!seen[b.shapeId]){ seen[b.shapeId] = true; targets.push(b); }
+    });
+    if (!targets.length){ toast(t('tNothingBound')); return; }
     lastOp = Date.now();
     let done = 0;
-    const alive = [];
-    for (const b of bindings){
-      const def = layouts[b.cat];
-      if (!def || !slideIds[b.slideId]) continue;
-      const ok = await applyDefTo(b.slideId, b.shapeId, def);
-      if (ok){ alive.push(b); done++; }
+    for (const tg of targets){
+      const ok = await applyDefTo(tg.slideId, tg.shapeId, layouts[tg.cat]);
+      if (ok){
+        done++;
+        if (!bindings.some(b => b.shapeId === tg.shapeId)) bindings.push(tg);
+      }
     }
-    bindings = alive;
     persistBindings();
     toast(done ? t('tUpdated')(done) : t('tNothingBound'));
   }catch(e){ toast(t('tLayoutFail')); }
@@ -1554,6 +1592,77 @@ $('claudetext').addEventListener('keydown', e => {
 });
 $('claudebox').addEventListener('click', e => {
   if (e.target === $('claudebox')) $('claudebox').classList.remove('on');
+});
+
+/* ================= clean slate ================= */
+let cleanArm = 0;
+$('cleanBtn').addEventListener('click', async () => {
+  if (!ready) return;
+  const btn = $('cleanBtn');
+  if (Date.now() - cleanArm > 4000){
+    cleanArm = Date.now();
+    btn.classList.add('arm');
+    btn.textContent = t('cleanConfirm');
+    setTimeout(() => {
+      if (Date.now() - cleanArm >= 3900){
+        btn.classList.remove('arm');
+        btn.textContent = t('cleanSlate');
+      }
+    }, 4200);
+    return;
+  }
+  cleanArm = 0;
+  btn.classList.remove('arm');
+  btn.textContent = t('cleanSlate');
+  try{
+    // remove every CriTick object from every slide
+    lastOp = Date.now();
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const refs = [];
+      all.items.forEach(sl => {
+        const r = ctx.presentation.slides.getItem(sl.id);
+        r.shapes.load('items/name');
+        refs.push(r);
+      });
+      await ctx.sync();
+      refs.forEach(r => {
+        r.shapes.items.forEach(sh => {
+          if (((sh.name || '')).indexOf('CriTick') === 0) sh.delete();
+        });
+      });
+      await ctx.sync();
+    });
+    // wipe everything stored in the file
+    try{
+      const st = Office.context.document.settings;
+      st.remove(KEY);
+      st.remove(KEY_PEOPLE);
+      st.remove(KEY_LAYOUTS);
+      st.remove(KEY_BINDINGS);
+      st.saveAsync(()=>{});
+    }catch(e){}
+    // reset in-pane state
+    notes = [];
+    people = {};
+    Object.keys(ROSTER).forEach(n => { people[n] = ROSTER[n]; });
+    layouts = {};
+    bindings = [];
+    undoStack = [];
+    filterP = '';
+    selPerson = '';
+    labelsOn = false;
+    $('filterPerson').value = '';
+    drawPeople();
+    drawCats();
+    drawMeBar();
+    drawNotes();
+    $('labelsBtn').textContent = t('labelsShow');
+    $('savedflag').textContent = '';
+    toast(t('tCleaned'));
+  }catch(e){ toast(t('tLayoutFail')); }
 });
 
 /* ================= toast ================= */
