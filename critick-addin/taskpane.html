@@ -53,6 +53,14 @@
   .lbtn:hover{background:#333;}
   .lbtn.ghost{background:var(--panel); color:var(--ink); border:1px solid var(--line);}
   .lbtn.ghost:hover{border-color:#C9C5BC;}
+  .lbtn.teaching{background:var(--pin); color:#fff; border-color:var(--pin);}
+  #iconbar{padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
+  #icongrid{display:none; grid-template-columns:repeat(6, 1fr); gap:6px; margin-top:8px;}
+  #icongrid.on{display:grid;}
+  #icongrid button{border:1px solid var(--line); border-radius:8px; background:var(--bg); padding:5px; cursor:pointer; aspect-ratio:1;}
+  #icongrid button:hover{border-color:var(--pin);}
+  #icongrid img{width:100%; height:100%; object-fit:contain;}
+  #icongrid .iconmsg{grid-column:1/-1; font-size:11px; color:var(--muted); text-align:center; padding:6px;}
   #filterbar{display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
   #filterbar label{font-size:11px; color:var(--muted);}
   #filterPerson{flex:1; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:4px 6px; background:var(--bg); outline:none; min-width:0;}
@@ -120,9 +128,13 @@
 <div id="layoutbar">
   <div class="lrow" id="catchips"></div>
   <div class="lrow">
-    <button id="arrangeBtn" class="lbtn"></button>
-    <button id="saveLayoutBtn" class="lbtn ghost"></button>
+    <button id="teachBtn" class="lbtn ghost"></button>
   </div>
+</div>
+
+<div id="iconbar">
+  <button id="iconsToggle" class="lbtn ghost"></button>
+  <div id="icongrid" style="display:none;"></div>
 </div>
 
 <div id="filterbar">
@@ -139,12 +151,14 @@
     <button id="labelsBtn"></button>
   </div>
   <div class="row">
+    <button id="insertSlidesBtn"></button>
     <button id="clearPins"></button>
   </div>
   <div id="savedflag"></div>
 </footer>
 
 <input type="file" id="imgpick" accept="image/png,image/jpeg" style="display:none;">
+<input type="file" id="slidepick" accept=".pptx" style="display:none;">
 <div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
@@ -235,11 +249,23 @@ const STR = {
     saveLayoutTip: 'Drop category pins on correctly placed elements, then press to learn their position, size and font',
     arrange: 'Arrange',
     arrangeTip: 'Drop category pins on messy elements, then press to snap them to the saved layout',
-    tLayoutSaved: n => 'Layout saved for ' + n + ' categor' + (n === 1 ? 'y' : 'ies'),
-    tArranged: n => n + ' element' + (n === 1 ? '' : 's') + ' arranged',
-    tNoCatPins: 'Drop category pins on the slides first',
-    tNoDef: 'No saved layout for: ',
-    tLayoutFail: 'Could not apply the layout'
+    teach: 'Teach layout',
+    teachTip: 'Turn on, select a correctly placed element, then click its category to save it',
+    teachOn: 'Teaching — select an element, then click its category',
+    tTaught: c => c + ' layout saved',
+    tSnapped: c => 'Snapped to ' + c + ' layout',
+    tSelectFirst: 'Select an element on the slide first',
+    tNoDefOne: c => 'No saved layout for ' + c + ' yet — use Teach first',
+    tLayoutFail: 'Could not apply the layout',
+    iconsToggle: 'Icons',
+    iconsTip: 'Insert a team icon onto the current slide',
+    iconsEmpty: 'No icons yet — upload .svg files to critick-addin/icons on GitHub',
+    iconsLoadFail: 'Could not load the icon library',
+    tIconFail: 'Could not insert the icon',
+    insertSlides: 'Insert template slides…',
+    insertSlidesTip: 'Pick a .pptx from the templates folder — its slides are added after the current slide, fully editable',
+    tSlidesInserted: 'Template slides inserted',
+    tSlidesFail: 'Could not insert the slides'
   }
 };
 function t(key){ return STR[lang][key]; }
@@ -254,6 +280,10 @@ function applyLang(){
   $('copyClaude').title = t('copyClaudeTip');
   $('labelsBtn').textContent = labelsOn ? t('labelsHide') : t('labelsShow');
   $('labelsBtn').title = t('labelsTip');
+  $('iconsToggle').textContent = t('iconsToggle');
+  $('iconsToggle').title = t('iconsTip');
+  $('insertSlidesBtn').textContent = t('insertSlides');
+  $('insertSlidesBtn').title = t('insertSlidesTip');
   drawPeople();
   drawCats();
   drawMeBar();
@@ -448,6 +478,7 @@ async function updateAnchor(){
       }
       clearHighlight();
       reconcilePins();
+      syncLayoutDefs();
       if (shapes.items.length){
         const nm = shapes.items[0].name;
         $('anchor').innerHTML = '';
@@ -1069,25 +1100,8 @@ const CATS = [
 let layouts = {};
 try{ layouts = JSON.parse(localStorage.getItem('critick-layouts') || '{}'); }catch(e){}
 
-function catPinBase64(letter, color){
-  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
-  const g = c.getContext('2d');
-  const r = 14;
-  g.beginPath();
-  g.moveTo(6 + r, 6);
-  g.arcTo(58, 6, 58, 58, r);
-  g.arcTo(58, 58, 6, 58, r);
-  g.arcTo(6, 58, 6, 6, r);
-  g.arcTo(6, 6, 58, 6, r);
-  g.closePath();
-  g.fillStyle = color; g.fill();
-  g.lineWidth = 4; g.strokeStyle = '#FFFFFF'; g.stroke();
-  g.fillStyle = '#FFFFFF';
-  g.font = 'bold 32px Heebo, Arial, sans-serif';
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillText(letter, 32, 34);
-  return c.toDataURL('image/png').split(',')[1];
-}
+let teachMode = false;
+let lastLayoutSync = 0;
 
 function drawCats(){
   const el = $('catchips');
@@ -1095,153 +1109,140 @@ function drawCats(){
   CATS.forEach(cat => {
     const b = document.createElement('button');
     b.className = 'cat-chip';
-    b.title = 'Drop a ' + cat.label + ' pin on the current slide';
+    b.title = teachMode ? ('Save the selected element as ' + cat.label) : ('Snap the selected element to the ' + cat.label + ' layout');
     const sq = document.createElement('span');
     sq.className = 'sq';
     sq.style.background = cat.color;
     sq.textContent = cat.letter;
     b.appendChild(sq);
     b.appendChild(document.createTextNode(cat.label));
-    b.addEventListener('click', () => dropCatPin(cat));
+    b.addEventListener('click', () => teachMode ? captureFromSelection(cat) : applyToSelection(cat));
     el.appendChild(b);
   });
-  $('arrangeBtn').textContent = t('arrange');
-  $('arrangeBtn').title = t('arrangeTip');
-  $('saveLayoutBtn').textContent = t('saveLayout');
-  $('saveLayoutBtn').title = t('saveLayoutTip');
+  const tb = $('teachBtn');
+  tb.textContent = teachMode ? t('teachOn') : t('teach');
+  tb.title = t('teachTip');
+  tb.classList.toggle('teaching', teachMode);
 }
+$('teachBtn').addEventListener('click', () => { teachMode = !teachMode; drawCats(); });
 
-async function dropCatPin(cat){
-  if (!ready) return;
-  try{
-    let slideId = null;
-    await PowerPoint.run(async ctx => {
-      const sel = ctx.presentation.getSelectedSlides();
-      sel.load('items/id');
-      await ctx.sync();
-      slideId = sel.items.length ? sel.items[0].id : null;
-    });
-    if (!slideId){ toast(t('tClickSlide')); return; }
-    const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
-    const before = await slideShapeNames(slideId);
-    lastOp = Date.now();
-    await new Promise(res => {
-      Office.context.document.setSelectedDataAsync(catPinBase64(cat.letter, cat.color), {
-        coercionType: Office.CoercionType.Image,
-        imageLeft: 40, imageTop: 40, imageWidth: 26, imageHeight: 26
-      }, r => res(r.status === Office.AsyncResultStatus.Succeeded));
-    });
-    await PowerPoint.run(async ctx => {
-      const sl = ctx.presentation.slides.getItem(slideId);
-      sl.shapes.load('items/name');
-      await ctx.sync();
-      const nw = sl.shapes.items.find(x => before.indexOf(x.name) === -1);
-      if (nw) nw.name = 'CriTickCat-' + cat.key + '-' + uid;
-      try{ ctx.presentation.setSelectedSlides([slideId]); }catch(e){}
-      await ctx.sync();
-    });
-  }catch(e){ toast(t('tLayoutFail')); }
-}
-
-async function collectCatPins(applyFn){
-  const found = [];
+async function getSelection(){
+  let slideId = null, shape = null;
   await PowerPoint.run(async ctx => {
-    const slides = ctx.presentation.slides;
-    slides.load('items/id');
+    const sel = ctx.presentation.getSelectedSlides();
+    sel.load('items/id');
+    const shp = ctx.presentation.getSelectedShapes();
+    shp.load('items/id,items/name');
     await ctx.sync();
-    const loaded = {};
-    slides.items.forEach(sl => {
-      loaded[sl.id] = ctx.presentation.slides.getItem(sl.id);
-      loaded[sl.id].shapes.load('items/name,items/left,items/top,items/width,items/height');
-    });
-    await ctx.sync();
-    Object.keys(loaded).forEach(id => {
-      const items = loaded[id].shapes.items;
-      items.forEach(pinSh => {
-        if (pinSh.name.indexOf('CriTickCat-') !== 0) return;
-        const cat = pinSh.name.split('-')[1];
-        const cx = pinSh.left + pinSh.width / 2;
-        const cy = pinSh.top + pinSh.height / 2;
-        const hits = items.filter(x =>
-          x.name.indexOf('CriTickCat-') !== 0 &&
-          x.name.indexOf('CriTickPin-') !== 0 &&
-          x.name.indexOf('CriTickLabel-') !== 0 &&
-          cx >= x.left && cx <= x.left + x.width &&
-          cy >= x.top && cy <= x.top + x.height);
-        hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
-        found.push({slideId: id, cat: cat, target: hits[0] || null, pin: pinSh});
-      });
-    });
-    if (applyFn) await applyFn(ctx, found);
+    slideId = sel.items.length ? sel.items[0].id : null;
+    const cand = shp.items.find(x => x.name.indexOf('CriTick') !== 0);
+    shape = cand ? {id: cand.id} : null;
   });
-  return found;
+  return {slideId, shape};
 }
 
-$('saveLayoutBtn').addEventListener('click', async () => {
+async function captureFromSelection(cat){
   if (!ready) return;
-  lastOp = Date.now();
   try{
-    const saved = {};
-    await collectCatPins(async (ctx, found) => {
-      found.forEach(f => {
-        if (!f.target) return;
-        try{ f.font = f.target.textFrame.textRange.font; f.font.load('size,name,color,bold'); }catch(e){}
-      });
+    const sel = await getSelection();
+    if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
+    let def = null;
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.load('left,top,width,height');
+      let font = null;
+      try{ font = sh.textFrame.textRange.font; font.load('size,name,color,bold'); }catch(e){}
       await ctx.sync();
-      found.forEach(f => {
-        if (!f.target) return;
-        const def = {left: f.target.left, top: f.target.top, width: f.target.width, height: f.target.height};
-        try{
-          if (f.font) def.font = {size: f.font.size, name: f.font.name, color: f.font.color, bold: f.font.bold};
-        }catch(e){}
-        layouts[f.cat] = def;
-        saved[f.cat] = true;
-        f.pin.delete();
-      });
-      await ctx.sync();
+      def = {left: sh.left, top: sh.top, width: sh.width, height: sh.height,
+             src: {slideId: sel.slideId, shapeId: sel.shape.id}};
+      try{
+        if (font) def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
+      }catch(e){}
     });
-    const n = Object.keys(saved).length;
-    if (!n){ toast(t('tNoCatPins')); return; }
+    layouts[cat.key] = def;
     try{ localStorage.setItem('critick-layouts', JSON.stringify(layouts)); }catch(e){}
-    toast(t('tLayoutSaved')(n));
+    teachMode = false;
+    drawCats();
+    toast(t('tTaught')(cat.label));
   }catch(e){ toast(t('tLayoutFail')); }
-});
+}
 
-$('arrangeBtn').addEventListener('click', async () => {
+async function applyToSelection(cat){
   if (!ready) return;
-  lastOp = Date.now();
+  const def = layouts[cat.key];
+  if (!def){ toast(t('tNoDefOne')(cat.label)); return; }
   try{
-    let done = 0;
-    const missing = {};
-    await collectCatPins(async (ctx, found) => {
-      found.forEach(f => {
-        const def = layouts[f.cat];
-        if (!def){ missing[f.cat] = true; return; }
-        if (!f.target){ f.pin.delete(); return; }
-        f.target.left = def.left;
-        f.target.top = def.top;
-        f.target.width = def.width;
-        f.target.height = def.height;
-        if (def.font){
-          try{
-            const fo = f.target.textFrame.textRange.font;
-            if (def.font.size) fo.size = def.font.size;
-            if (def.font.name) fo.name = def.font.name;
-            if (def.font.color) fo.color = def.font.color;
-            if (def.font.bold !== undefined) fo.bold = def.font.bold;
-          }catch(e){}
-        }
-        f.pin.delete();
-        done++;
-      });
+    const sel = await getSelection();
+    if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
+    lastOp = Date.now();
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.left = def.left;
+      sh.top = def.top;
+      sh.width = def.width;
+      sh.height = def.height;
+      if (def.font){
+        try{
+          const fo = sh.textFrame.textRange.font;
+          if (def.font.size) fo.size = def.font.size;
+          if (def.font.name) fo.name = def.font.name;
+          if (def.font.color) fo.color = def.font.color;
+          if (def.font.bold !== undefined) fo.bold = def.font.bold;
+        }catch(e){}
+      }
       await ctx.sync();
     });
-    const miss = Object.keys(missing);
-    if (!done && !miss.length){ toast(t('tNoCatPins')); return; }
-    if (miss.length) toast(t('tNoDef') + miss.join(', '));
-    else toast(t('tArranged')(done));
+    toast(t('tSnapped')(cat.label));
   }catch(e){ toast(t('tLayoutFail')); }
-});
+}
+
+// live sync: if a taught source element was edited, its definition follows
+async function syncLayoutDefs(){
+  if (!ready) return;
+  if (Date.now() - lastLayoutSync < 4000) return;
+  const withSrc = Object.keys(layouts).filter(k => layouts[k] && layouts[k].src);
+  if (!withSrc.length) return;
+  lastLayoutSync = Date.now();
+  try{
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const existing = {};
+      all.items.forEach(sl => { existing[sl.id] = true; });
+      const jobs = [];
+      withSrc.forEach(k => {
+        const src = layouts[k].src;
+        if (!existing[src.slideId]) return;
+        const sl = ctx.presentation.slides.getItem(src.slideId);
+        sl.shapes.load('items/id,items/left,items/top,items/width,items/height');
+        jobs.push({k, sl});
+      });
+      await ctx.sync();
+      const fontJobs = [];
+      jobs.forEach(j => {
+        const sh = j.sl.shapes.items.find(x => x.id === layouts[j.k].src.shapeId);
+        if (!sh) return;
+        const d = layouts[j.k];
+        d.left = sh.left; d.top = sh.top; d.width = sh.width; d.height = sh.height;
+        try{
+          const font = sh.textFrame.textRange.font;
+          font.load('size,name,color,bold');
+          fontJobs.push({k: j.k, font});
+        }catch(e){}
+      });
+      await ctx.sync();
+      fontJobs.forEach(fj => {
+        try{
+          layouts[fj.k].font = {size: fj.font.size, name: fj.font.name, color: fj.font.color, bold: fj.font.bold};
+        }catch(e){}
+      });
+    });
+    try{ localStorage.setItem('critick-layouts', JSON.stringify(layouts)); }catch(e){}
+  }catch(e){}
+}
 
 /* ================= notes as text on slides ================= */
 function labelStyle(tb){
