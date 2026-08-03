@@ -133,7 +133,6 @@
   <div class="lrow">
     <button id="teachBtn" class="lbtn ghost"></button>
   </div>
-  <div id="teachsel" style="display:none;"></div>
 </div>
 
 <div id="iconbar">
@@ -254,10 +253,9 @@ const STR = {
     arrange: 'Arrange',
     arrangeTip: 'Drop category pins on messy elements, then press to snap them to the saved layout',
     teach: 'Save layout',
-    teachTip: 'Turn on, select a correctly placed element, then click its category to save it',
-    teachOn: 'Choose a category to save this element — changing the selection cancels',
-    selNone: 'Nothing selected on the slide',
-    selPrefix: 'Selected: ',
+    teachTip: 'Save this slide\u2019s arrangement as the layout \u2014 header, tagline, description and fabric are detected automatically',
+    tLayoutSavedList: list => 'Layout saved: ' + list,
+    tNoTextFound: 'No text elements found on this slide',
     tTaught: c => c + ' layout saved',
     tSnapped: c => 'Snapped to ' + c + ' layout',
     tSelectFirst: 'Select an element on the slide first',
@@ -488,12 +486,7 @@ async function updateAnchor(){
         id: nonPin ? nonPin.id : null,
         name: nonPin ? nonPin.name : null
       };
-      if (teachMode && lastSel.id !== armedSelId){
-        teachMode = false;
-        armedSelId = null;
-        drawCats();
-      }
-      renderTeachSel();
+
       if (selName && selName.indexOf('CriTickPin-') === 0){
         highlightNote(selName.slice('CriTickPin-'.length));
         $('anchor').textContent = t('anchorPin');
@@ -1130,8 +1123,6 @@ function persistLayouts(){
   }catch(e){}
 }
 
-let teachMode = false;
-let armedSelId = null;
 let lastLayoutSync = 0;
 let lastSel = {slideId: null, id: null, name: null};
 
@@ -1141,53 +1132,100 @@ function drawCats(){
   CATS.forEach(cat => {
     const b = document.createElement('button');
     b.className = 'cat-chip';
-    b.title = teachMode ? ('Save the selected element as ' + cat.label) : ('Snap the selected element to the ' + cat.label + ' layout');
+    b.title = 'Snap the selected element to the ' + cat.label + ' layout (double-click: save the selected element as ' + cat.label + ')';
     const sq = document.createElement('span');
     sq.className = 'sq';
     sq.style.background = cat.color;
     sq.textContent = cat.letter;
     b.appendChild(sq);
-    b.appendChild(document.createTextNode((teachMode ? 'Save as ' : '') + cat.label));
-    if (!teachMode && layouts[cat.key]){
+    b.appendChild(document.createTextNode(cat.label));
+    if (layouts[cat.key]){
       const ok = document.createElement('span');
       ok.className = 'has';
-      ok.textContent = '✓';
+      ok.textContent = '\u2713';
       ok.title = cat.label + ' layout is saved';
       b.appendChild(ok);
     }
-    b.addEventListener('click', () => teachMode ? captureFromSelection(cat) : applyToSelection(cat));
+    let clickT = null;
+    b.addEventListener('click', () => {
+      clearTimeout(clickT);
+      clickT = setTimeout(() => applyToSelection(cat), 280);
+    });
+    b.addEventListener('dblclick', () => {
+      clearTimeout(clickT);
+      captureFromSelection(cat);
+    });
     el.appendChild(b);
   });
   const tb = $('teachBtn');
-  tb.textContent = teachMode ? t('teachOn') : t('teach');
+  tb.textContent = t('teach');
   tb.title = t('teachTip');
-  tb.classList.toggle('teaching', teachMode);
-  $('teachsel').style.display = teachMode ? 'block' : 'none';
-  renderTeachSel();
 }
+$('teachBtn').addEventListener('click', saveLayoutFromSlide);
 
-function renderTeachSel(){
-  const el = $('teachsel');
-  if (!el || !teachMode) return;
-  if (lastSel.id){
-    el.classList.add('ok');
-    el.textContent = '✓ ' + t('selPrefix') + lastSel.name;
-  } else {
-    el.classList.remove('ok');
-    el.textContent = t('selNone');
-  }
+async function saveLayoutFromSlide(){
+  if (!ready) return;
+  try{
+    let slideId = null;
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      await ctx.sync();
+      slideId = sel.items.length ? sel.items[0].id : null;
+    });
+    if (!slideId){ toast(t('tClickSlide')); return; }
+    const found = {};
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(slideId);
+      sl.shapes.load('items/id,items/name,items/left,items/top,items/width,items/height');
+      await ctx.sync();
+      const cands = [];
+      sl.shapes.items.forEach(sh => {
+        if (((sh.name || '')).indexOf('CriTick') === 0) return;
+        try{
+          const tr = sh.textFrame.textRange;
+          tr.load('text');
+          tr.font.load('size,name,color,bold');
+          cands.push({sh: sh, tr: tr});
+        }catch(e){}
+      });
+      await ctx.sync();
+      const texts = [];
+      cands.forEach(c => {
+        let txt = '', size = 0, font = null;
+        try{ txt = (c.tr.text || '').trim(); }catch(e){}
+        if (!txt) return;
+        try{
+          size = c.tr.font.size || 0;
+          font = {size: c.tr.font.size, name: c.tr.font.name, color: c.tr.font.color, bold: c.tr.font.bold};
+        }catch(e){}
+        texts.push({sh: c.sh, txt: txt, size: size, font: font});
+      });
+      const take = (key, item) => {
+        if (!item) return;
+        found[key] = {left: item.sh.left, top: item.sh.top, width: item.sh.width, height: item.sh.height,
+                      font: item.font, src: {slideId: slideId, shapeId: item.sh.id}};
+        texts.splice(texts.indexOf(item), 1);
+      };
+      take('fabric', texts.find(x => /fabric|composition|%|[A-Z]{1,3}\d{3,}/i.test(x.txt)));
+      let hdr = null;
+      texts.forEach(x => { if (!hdr || x.size > hdr.size || (x.size === hdr.size && x.sh.top < hdr.sh.top)) hdr = x; });
+      take('header', hdr);
+      let tg = null;
+      texts.forEach(x => { if (!tg || x.size > tg.size) tg = x; });
+      take('tagline', tg);
+      let ds = null;
+      texts.forEach(x => { if (!ds || x.txt.length > ds.txt.length) ds = x; });
+      take('description', ds);
+    });
+    const keys = Object.keys(found);
+    if (!keys.length){ toast(t('tNoTextFound')); return; }
+    keys.forEach(k => { layouts[k] = found[k]; });
+    persistLayouts();
+    drawCats();
+    toast(t('tLayoutSavedList')(keys.map(k => CATS.find(c => c.key === k).label).join(', ')));
+  }catch(e){ toast(t('tLayoutFail')); }
 }
-$('teachBtn').addEventListener('click', () => {
-  if (!teachMode){
-    if (!lastSel.id){ toast(t('tSelectFirst')); return; }
-    armedSelId = lastSel.id;
-    teachMode = true;
-  } else {
-    teachMode = false;
-    armedSelId = null;
-  }
-  drawCats();
-});
 
 async function getSelection(){
   let slideId = null, shape = null;
@@ -1229,8 +1267,6 @@ async function captureFromSelection(cat){
     });
     layouts[cat.key] = def;
     persistLayouts();
-    teachMode = false;
-    armedSelId = null;
     drawCats();
     toast(t('tTaught')(cat.label));
   }catch(e){ toast(t('tLayoutFail')); }
