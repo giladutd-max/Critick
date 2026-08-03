@@ -54,6 +54,9 @@
   .lbtn.ghost{background:var(--panel); color:var(--ink); border:1px solid var(--line);}
   .lbtn.ghost:hover{border-color:#C9C5BC;}
   .lbtn.teaching{background:var(--pin); color:#fff; border-color:var(--pin);}
+  #teachsel{margin-top:6px; font-size:11px; padding:5px 8px; border-radius:8px; background:var(--bg); border:1px solid var(--line); color:var(--muted);}
+  #teachsel.ok{color:var(--done); border-color:var(--done); background:var(--done-soft); font-weight:500;}
+  .cat-chip .has{color:var(--done); font-weight:700; margin-inline-start:2px;}
   #iconbar{padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
   #icongrid{display:none; grid-template-columns:repeat(6, 1fr); gap:6px; margin-top:8px;}
   #icongrid.on{display:grid;}
@@ -130,6 +133,7 @@
   <div class="lrow">
     <button id="teachBtn" class="lbtn ghost"></button>
   </div>
+  <div id="teachsel" style="display:none;"></div>
 </div>
 
 <div id="iconbar">
@@ -249,9 +253,11 @@ const STR = {
     saveLayoutTip: 'Drop category pins on correctly placed elements, then press to learn their position, size and font',
     arrange: 'Arrange',
     arrangeTip: 'Drop category pins on messy elements, then press to snap them to the saved layout',
-    teach: 'Teach layout',
+    teach: 'Save layout',
     teachTip: 'Turn on, select a correctly placed element, then click its category to save it',
-    teachOn: 'Teaching — select an element, then click its category',
+    teachOn: 'Now click the category to save the selected element',
+    selNone: 'Nothing selected on the slide',
+    selPrefix: 'Selected: ',
     tTaught: c => c + ' layout saved',
     tSnapped: c => 'Snapped to ' + c + ' layout',
     tSelectFirst: 'Select an element on the slide first',
@@ -467,9 +473,18 @@ async function updateAnchor(){
   try{
     await PowerPoint.run(async ctx => {
       const shapes = ctx.presentation.getSelectedShapes();
-      shapes.load('items/name');
+      shapes.load('items/name,items/id');
+      const selSlides = ctx.presentation.getSelectedSlides();
+      selSlides.load('items/id');
       await ctx.sync();
       const selName = shapes.items.length ? shapes.items[0].name : null;
+      const nonPin = shapes.items.find(x => ((x.name || '')).indexOf('CriTick') !== 0);
+      lastSel = {
+        slideId: selSlides.items.length ? selSlides.items[0].id : null,
+        id: nonPin ? nonPin.id : null,
+        name: nonPin ? nonPin.name : null
+      };
+      renderTeachSel();
       if (selName && selName.indexOf('CriTickPin-') === 0){
         highlightNote(selName.slice('CriTickPin-'.length));
         $('anchor').textContent = t('anchorPin');
@@ -1102,6 +1117,7 @@ try{ layouts = JSON.parse(localStorage.getItem('critick-layouts-v2') || '{}'); }
 
 let teachMode = false;
 let lastLayoutSync = 0;
+let lastSel = {slideId: null, id: null, name: null};
 
 function drawCats(){
   const el = $('catchips');
@@ -1116,6 +1132,13 @@ function drawCats(){
     sq.textContent = cat.letter;
     b.appendChild(sq);
     b.appendChild(document.createTextNode(cat.label));
+    if (layouts[cat.key]){
+      const ok = document.createElement('span');
+      ok.className = 'has';
+      ok.textContent = '✓';
+      ok.title = cat.label + ' layout is saved';
+      b.appendChild(ok);
+    }
     b.addEventListener('click', () => teachMode ? captureFromSelection(cat) : applyToSelection(cat));
     el.appendChild(b);
   });
@@ -1123,21 +1146,39 @@ function drawCats(){
   tb.textContent = teachMode ? t('teachOn') : t('teach');
   tb.title = t('teachTip');
   tb.classList.toggle('teaching', teachMode);
+  $('teachsel').style.display = teachMode ? 'block' : 'none';
+  renderTeachSel();
+}
+
+function renderTeachSel(){
+  const el = $('teachsel');
+  if (!el || !teachMode) return;
+  if (lastSel.id){
+    el.classList.add('ok');
+    el.textContent = '✓ ' + t('selPrefix') + lastSel.name;
+  } else {
+    el.classList.remove('ok');
+    el.textContent = t('selNone');
+  }
 }
 $('teachBtn').addEventListener('click', () => { teachMode = !teachMode; drawCats(); });
 
 async function getSelection(){
   let slideId = null, shape = null;
-  await PowerPoint.run(async ctx => {
-    const sel = ctx.presentation.getSelectedSlides();
-    sel.load('items/id');
-    const shp = ctx.presentation.getSelectedShapes();
-    shp.load('items/id,items/name');
-    await ctx.sync();
-    slideId = sel.items.length ? sel.items[0].id : null;
-    const cand = shp.items.find(x => x.name.indexOf('CriTick') !== 0);
-    shape = cand ? {id: cand.id} : null;
-  });
+  try{
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      const shp = ctx.presentation.getSelectedShapes();
+      shp.load('items/id,items/name');
+      await ctx.sync();
+      slideId = sel.items.length ? sel.items[0].id : null;
+      const cand = shp.items.find(x => ((x.name || '')).indexOf('CriTick') !== 0);
+      shape = cand ? {id: cand.id} : null;
+    });
+  }catch(e){}
+  if (!shape && lastSel.id){ shape = {id: lastSel.id}; slideId = slideId || lastSel.slideId; }
+  if (!slideId && lastSel.slideId) slideId = lastSel.slideId;
   return {slideId, shape};
 }
 
