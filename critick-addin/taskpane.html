@@ -1272,10 +1272,16 @@ async function refreshDefFromSrc(catKey){
 async function applyToSelection(cat){
   if (!ready) return;
   if (!layouts[cat.key]) return;
+  const sel = await getSelection();
+  const d0 = layouts[cat.key];
+  if (sel.shape && d0.src && String(d0.src.shapeId) === String(sel.shape.id)){
+    // the master itself was clicked: re-learn the layout from it, never snap it back
+    await captureFromSelection(cat);
+    return;
+  }
   await refreshDefFromSrc(cat.key);
   const def = layouts[cat.key];
   try{
-    const sel = await getSelection();
     if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
     lastOp = Date.now();
     await PowerPoint.run(async ctx => {
