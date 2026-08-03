@@ -131,6 +131,7 @@
 <div id="layoutbar">
   <div class="lrow" id="catchips"></div>
   <div class="lrow">
+    <button id="updateAllBtn" class="lbtn"></button>
     <button id="teachBtn" class="lbtn ghost"></button>
   </div>
 </div>
@@ -258,6 +259,10 @@ const STR = {
     tTaught: c => c + ' \u2713 saved',
     tSnapped: c => 'Snapped to ' + c + ' layout',
     tSelectFirst: 'Select an element on the slide first',
+    updateAll: 'Re-arrange all',
+    updateAllTip: 'Snap every element that was ever arranged back to the layout\u2019s current positions',
+    tUpdated: n => n + ' element' + (n === 1 ? '' : 's') + ' re-arranged',
+    tNothingBound: 'Nothing has been arranged yet',
     tLayoutFail: 'Could not apply the layout',
     iconsToggle: 'Icons',
     iconsTip: 'Insert a team icon onto the current slide',
@@ -313,6 +318,10 @@ Office.onReady(info => {
   try{
     const rawL = Office.context.document.settings.get(KEY_LAYOUTS);
     if (rawL) layouts = JSON.parse(rawL);
+  }catch(e){}
+  try{
+    const rawB = Office.context.document.settings.get(KEY_BINDINGS);
+    if (rawB) bindings = JSON.parse(rawB);
   }catch(e){}
   Object.keys(ROSTER).forEach(n => { if (!people[n]) people[n] = ROSTER[n]; });
   let mx = 0;
@@ -482,7 +491,8 @@ async function updateAnchor(){
       lastSel = {
         slideId: selSlides.items.length ? selSlides.items[0].id : null,
         id: nonPin ? nonPin.id : null,
-        name: nonPin ? nonPin.name : null
+        name: nonPin ? nonPin.name : null,
+        ts: Date.now()
       };
 
       if (selName && selName.indexOf('CriTickPin-') === 0){
@@ -1113,7 +1123,15 @@ const CATS = [
   {key:'fabric', label:'Fabric', letter:'F', color:'#D97706'}
 ];
 const KEY_LAYOUTS = 'critick-layouts';
+const KEY_BINDINGS = 'critick-bindings';
 let layouts = {};
+let bindings = []; // {cat, slideId, shapeId}
+function persistBindings(){
+  try{
+    Office.context.document.settings.set(KEY_BINDINGS, JSON.stringify(bindings));
+    Office.context.document.settings.saveAsync(()=>{});
+  }catch(e){}
+}
 function persistLayouts(){
   try{
     Office.context.document.settings.set(KEY_LAYOUTS, JSON.stringify(layouts));
@@ -1122,7 +1140,7 @@ function persistLayouts(){
 }
 
 let lastLayoutSync = 0;
-let lastSel = {slideId: null, id: null, name: null};
+let lastSel = {slideId: null, id: null, name: null, ts: 0};
 
 function drawCats(){
   const el = $('catchips');
@@ -1152,10 +1170,14 @@ function drawCats(){
   const tb = $('teachBtn');
   tb.textContent = t('teach');
   tb.title = t('teachTip');
+  $('updateAllBtn').textContent = t('updateAll');
+  $('updateAllBtn').title = t('updateAllTip');
 }
 $('teachBtn').addEventListener('click', () => {
   layouts = {};
+  bindings = [];
   persistLayouts();
+  persistBindings();
   drawCats();
   toast(t('tReset'));
 });
@@ -1174,7 +1196,7 @@ async function getSelection(){
       shape = cand ? {id: cand.id} : null;
     });
   }catch(e){}
-  if (!shape && lastSel.id){ shape = {id: lastSel.id}; slideId = slideId || lastSel.slideId; }
+  if (!shape && lastSel.id && Date.now() - lastSel.ts < 10000){ shape = {id: lastSel.id}; slideId = slideId || lastSel.slideId; }
   if (!slideId && lastSel.slideId) slideId = lastSel.slideId;
   return {slideId, shape};
 }
@@ -1205,10 +1227,37 @@ async function captureFromSelection(cat){
   }catch(e){ toast(t('tLayoutFail')); }
 }
 
+async function refreshDefFromSrc(catKey){
+  const def = layouts[catKey];
+  if (!def || !def.src) return;
+  try{
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      if (!all.items.some(sl => sl.id === def.src.slideId)) return;
+      const sl = ctx.presentation.slides.getItem(def.src.slideId);
+      sl.shapes.load('items/id,items/left,items/top,items/width,items/height');
+      await ctx.sync();
+      const sh = sl.shapes.items.find(x => x.id === def.src.shapeId);
+      if (!sh) return;
+      def.left = sh.left; def.top = sh.top; def.width = sh.width; def.height = sh.height;
+      let font = null;
+      try{ font = sh.textFrame.textRange.font; font.load('size,name,color,bold'); }catch(e){}
+      await ctx.sync();
+      try{
+        if (font) def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
+      }catch(e){}
+    });
+    persistLayouts();
+  }catch(e){}
+}
+
 async function applyToSelection(cat){
   if (!ready) return;
+  if (!layouts[cat.key]) return;
+  await refreshDefFromSrc(cat.key);
   const def = layouts[cat.key];
-  if (!def) return;
   try{
     const sel = await getSelection();
     if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
@@ -1231,9 +1280,67 @@ async function applyToSelection(cat){
       }
       await ctx.sync();
     });
+    bindings = bindings.filter(b => b.shapeId !== sel.shape.id);
+    if (!def.src || def.src.shapeId !== sel.shape.id){
+      bindings.push({cat: cat.key, slideId: sel.slideId, shapeId: sel.shape.id});
+    }
+    persistBindings();
     toast(t('tSnapped')(cat.label));
   }catch(e){ toast(t('tLayoutFail')); }
 }
+
+async function applyDefTo(slideId, shapeId, def){
+  const attempt = async withFont => {
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(slideId);
+      sl.shapes.load('items/id');
+      await ctx.sync();
+      const sh = sl.shapes.items.find(x => x.id === shapeId);
+      if (!sh) throw new Error('gone');
+      sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.height;
+      if (withFont && def.font){
+        const fo = sh.textFrame.textRange.font;
+        if (def.font.size) fo.size = def.font.size;
+        if (def.font.name) fo.name = def.font.name;
+        if (def.font.color) fo.color = def.font.color;
+        if (def.font.bold !== undefined) fo.bold = def.font.bold;
+      }
+      await ctx.sync();
+    });
+  };
+  try{ await attempt(true); return true; }
+  catch(e){
+    try{ await attempt(false); return true; }
+    catch(e2){ return false; }
+  }
+}
+
+$('updateAllBtn').addEventListener('click', async () => {
+  if (!ready) return;
+  if (!bindings.length){ toast(t('tNothingBound')); return; }
+  try{
+    for (const k of Object.keys(layouts)) await refreshDefFromSrc(k);
+    let slideIds = {};
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      all.items.forEach(sl => { slideIds[sl.id] = true; });
+    });
+    lastOp = Date.now();
+    let done = 0;
+    const alive = [];
+    for (const b of bindings){
+      const def = layouts[b.cat];
+      if (!def || !slideIds[b.slideId]) continue;
+      const ok = await applyDefTo(b.slideId, b.shapeId, def);
+      if (ok){ alive.push(b); done++; }
+    }
+    bindings = alive;
+    persistBindings();
+    toast(done ? t('tUpdated')(done) : t('tNothingBound'));
+  }catch(e){ toast(t('tLayoutFail')); }
+});
 
 // live sync: if a taught source element was edited, its definition follows
 async function syncLayoutDefs(){
