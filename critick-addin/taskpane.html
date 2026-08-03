@@ -1492,13 +1492,13 @@ async function loadIcons(){
   }
 }
 
-function svgToPngBase64(svgText, px){
+function svgToPngBase64(svgText, pw, ph){
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
       const c = document.createElement('canvas');
-      c.width = px; c.height = px;
-      c.getContext('2d').drawImage(img, 0, 0, px, px);
+      c.width = pw; c.height = ph;
+      c.getContext('2d').drawImage(img, 0, 0, pw, ph);
       res(c.toDataURL('image/png').split(',')[1]);
     };
     img.onerror = rej;
@@ -1506,11 +1506,28 @@ function svgToPngBase64(svgText, px){
   });
 }
 
+function svgDims(svg){
+  let w = null, h = null;
+  const vb = svg.match(/viewBox\s*=\s*["']\s*[\d.+-]+[\s,]+[\d.+-]+[\s,]+([\d.+-]+)[\s,]+([\d.+-]+)/i);
+  if (vb){ w = parseFloat(vb[1]); h = parseFloat(vb[2]); }
+  if (!(w > 0) || !(h > 0)){
+    const mw = svg.match(/\bwidth\s*=\s*["']([\d.]+)(px)?["']/i);
+    const mh = svg.match(/\bheight\s*=\s*["']([\d.]+)(px)?["']/i);
+    if (mw && mh){ w = parseFloat(mw[1]); h = parseFloat(mh[1]); }
+  }
+  return (w > 0 && h > 0) ? {w: w, h: h} : {w: 1, h: 1};
+}
+
 async function insertIcon(url){
   try{
     const svg = await (await fetch(url)).text();
     lastOp = Date.now();
-    const opts = {imageLeft: 40, imageTop: 40, imageWidth: 60, imageHeight: 60};
+    const d = svgDims(svg);
+    const MAX = 90;
+    let iw, ih;
+    if (d.w >= d.h){ iw = MAX; ih = Math.max(8, Math.round(MAX * d.h / d.w)); }
+    else { ih = MAX; iw = Math.max(8, Math.round(MAX * d.w / d.h)); }
+    const opts = {imageLeft: 40, imageTop: 40, imageWidth: iw, imageHeight: ih};
     const okVector = await new Promise(res => {
       try{
         Office.context.document.setSelectedDataAsync(svg, Object.assign({coercionType: Office.CoercionType.XmlSvg}, opts),
@@ -1518,7 +1535,7 @@ async function insertIcon(url){
       }catch(e){ res(false); }
     });
     if (okVector) return;
-    const png = await svgToPngBase64(svg, 256);
+    const png = await svgToPngBase64(svg, iw * 4, ih * 4);
     const okPng = await new Promise(res => {
       Office.context.document.setSelectedDataAsync(png, Object.assign({coercionType: Office.CoercionType.Image}, opts),
         r => res(r.status === Office.AsyncResultStatus.Succeeded));
