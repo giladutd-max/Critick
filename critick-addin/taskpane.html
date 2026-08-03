@@ -132,6 +132,7 @@
 
 <div id="layoutbar">
   <div class="lrow" id="catchips"></div>
+  <div class="lrow" id="imgslots" style="display:none;"></div>
   <div class="lrow">
     <button id="updateAllBtn" class="lbtn"></button>
     <button id="teachBtn" class="lbtn ghost"></button>
@@ -270,6 +271,9 @@ const STR = {
     tSnapped: c => 'Snapped to ' + c + ' layout',
     tImgSlotSaved: n => 'Image ' + n + ' \u2713 saved',
     tImgSnapped: n => 'Snapped to Image ' + n,
+    tGhostsOn: 'Layout preview shown \u2014 click a category with nothing selected to hide it',
+    tGhostsOff: 'Layout preview hidden',
+    tNoLayout: 'Nothing taught yet',
     tSelectFirst: 'Select an element on the slide first',
     updateAll: 'Re-arrange all',
     updateAllTip: 'Snap every element that was ever arranged back to the layout\u2019s current positions',
@@ -520,12 +524,14 @@ async function updateAnchor(){
       await ctx.sync();
       const selName = shapes.items.length ? shapes.items[0].name : null;
       const nonPin = shapes.items.find(x => ((x.name || '')).indexOf('CriTick') !== 0);
+      const prevSelId = lastSel.id;
       lastSel = {
         slideId: selSlides.items.length ? selSlides.items[0].id : null,
         id: nonPin ? nonPin.id : null,
         name: nonPin ? nonPin.name : null,
         ts: Date.now()
       };
+      if (pendingImgSel && lastSel.id !== prevSelId) hideImgSlots();
 
       if (selName && selName.indexOf('CriTickPin-') === 0){
         highlightNote(selName.slice('CriTickPin-'.length));
@@ -697,6 +703,24 @@ async function clearAllPins(){
       await removePinImage(n);
       n.hidden = true;
     }
+    try{
+      await PowerPoint.run(async ctx => {
+        const all = ctx.presentation.slides;
+        all.load('items/id');
+        await ctx.sync();
+        const refs = [];
+        all.items.forEach(sl => {
+          const r = ctx.presentation.slides.getItem(sl.id);
+          r.shapes.load('items/name');
+          refs.push(r);
+        });
+        await ctx.sync();
+        refs.forEach(r => r.shapes.items.forEach(sh => {
+          if (((sh.name || '')).indexOf('CriTickGhost-') === 0) sh.delete();
+        }));
+        await ctx.sync();
+      });
+    }catch(e){}
     persist();
     drawNotes();
     pushUndo({type:'clearAll', uids: affected.map(n => n.uid)});
@@ -1174,6 +1198,73 @@ function persistLayouts(){
 let lastLayoutSync = 0;
 let lastSel = {slideId: null, id: null, name: null, ts: 0};
 
+function ghostPngBase64(label, wPt, hPt){
+  const scale = Math.min(3, 900 / Math.max(wPt, hPt));
+  const W = Math.max(24, Math.round(wPt * scale));
+  const H = Math.max(24, Math.round(hPt * scale));
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.strokeStyle = '#475569';
+  g.lineWidth = Math.max(2, Math.round(scale * 1.5));
+  g.setLineDash([g.lineWidth * 3, g.lineWidth * 2]);
+  g.strokeRect(g.lineWidth, g.lineWidth, W - g.lineWidth * 2, H - g.lineWidth * 2);
+  g.fillStyle = 'rgba(71,85,105,0.35)';
+  g.font = 'bold ' + Math.round(Math.min(W, H) * 0.5) + 'px Heebo, Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(label), W / 2, H / 2);
+  return c.toDataURL('image/png').split(',')[1];
+}
+
+async function toggleGhosts(){
+  if (!ready) return;
+  const keys = Object.keys(layouts).filter(k => layouts[k]);
+  try{
+    let slideId = null, hadGhosts = false;
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      await ctx.sync();
+      slideId = sel.items.length ? sel.items[0].id : null;
+      if (!slideId) return;
+      const sl = ctx.presentation.slides.getItem(slideId);
+      sl.shapes.load('items/name');
+      await ctx.sync();
+      sl.shapes.items.forEach(sh => {
+        if (((sh.name || '')).indexOf('CriTickGhost-') === 0){ hadGhosts = true; sh.delete(); }
+      });
+      await ctx.sync();
+    });
+    if (!slideId){ toast(t('tClickSlide')); return; }
+    if (hadGhosts){ toast(t('tGhostsOff')); return; }
+    if (!keys.length){ toast(t('tNoLayout')); return; }
+    lastOp = Date.now();
+    for (const k of keys){
+      const def = layouts[k];
+      let label;
+      if (k.indexOf('image') === 0) label = imageSlotNum(k);
+      else { const c = CATS.find(x => x.key === k); label = c ? c.letter : '?'; }
+      const before = await slideShapeNames(slideId);
+      await new Promise(res => {
+        Office.context.document.setSelectedDataAsync(ghostPngBase64(label, def.width, def.height), {
+          coercionType: Office.CoercionType.Image,
+          imageLeft: def.left, imageTop: def.top, imageWidth: def.width, imageHeight: def.height
+        }, r => res(r.status === Office.AsyncResultStatus.Succeeded));
+      });
+      await PowerPoint.run(async ctx => {
+        const sl = ctx.presentation.slides.getItem(slideId);
+        sl.shapes.load('items/name');
+        await ctx.sync();
+        const nw = sl.shapes.items.find(x => before.indexOf(x.name) === -1);
+        if (nw) nw.name = 'CriTickGhost-' + k;
+        try{ ctx.presentation.setSelectedSlides([slideId]); }catch(e){}
+        await ctx.sync();
+      });
+    }
+    toast(t('tGhostsOn'));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
 function imageKeys(){
   return Object.keys(layouts)
     .filter(k => k.indexOf('image') === 0 && layouts[k])
@@ -1202,6 +1293,7 @@ async function captureImageSlot(key, sel){
 async function imageChipClick(){
   if (!ready) return;
   const sel = await getSelection();
+  if (sel.slideId && !sel.shape){ toggleGhosts(); return; }
   if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
   const keys = imageKeys();
   // clicking an existing image mother = update that slot
@@ -1216,36 +1308,63 @@ async function imageChipClick(){
     await captureImageSlot('image' + next, sel);
     return;
   }
-  // elsewhere: snap to the nearest slot
+  // elsewhere: one slot snaps directly, several open the chooser
+  if (keys.length === 1){ await snapToSlot(keys[0], sel); return; }
+  showImgSlots(sel, keys);
+}
+
+async function snapToSlot(key, sel){
   try{
-    for (const k of keys) await refreshDefFromSrc(k);
-    let target = null;
+    await refreshDefFromSrc(key);
+    const def = layouts[key];
     await PowerPoint.run(async ctx => {
       const sl = ctx.presentation.slides.getItem(sel.slideId);
       const sh = sl.shapes.getItem(sel.shape.id);
-      sh.load('left,top,width,height');
+      sh.load('width,height');
       await ctx.sync();
-      const cx = sh.left + sh.width / 2, cy = sh.top + sh.height / 2;
-      let best = null, bestD = Infinity;
-      keys.forEach(k => {
-        const d = layouts[k];
-        const dx = (d.left + d.width / 2) - cx, dy = (d.top + d.height / 2) - cy;
-        const dist = dx * dx + dy * dy;
-        if (dist < bestD){ bestD = dist; best = k; }
-      });
-      target = best;
-      const def = layouts[target];
       const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
       sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.width * ratio;
       await ctx.sync();
     });
-    if (target){
-      bindings = bindings.filter(b => !(String(b.shapeId) === String(sel.shape.id) && String(b.slideId) === String(sel.slideId)));
-      bindings.push({cat: target, slideId: sel.slideId, shapeId: sel.shape.id});
-      persistBindings();
-      toast(t('tImgSnapped')(imageSlotNum(target)));
-    }
+    bindings = bindings.filter(b => !(String(b.shapeId) === String(sel.shape.id) && String(b.slideId) === String(sel.slideId)));
+    bindings.push({cat: key, slideId: sel.slideId, shapeId: sel.shape.id});
+    persistBindings();
+    lastOp = Date.now();
+    toast(t('tImgSnapped')(imageSlotNum(key)));
   }catch(e){ toast(t('tLayoutFail')); }
+}
+
+let pendingImgSel = null;
+function showImgSlots(sel, keys){
+  pendingImgSel = sel;
+  const row = $('imgslots');
+  row.innerHTML = '';
+  keys.forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'cat-chip';
+    b.title = 'Snap to Image ' + imageSlotNum(k);
+    const sq = document.createElement('span');
+    sq.className = 'sq';
+    sq.style.background = '#475569';
+    sq.textContent = imageSlotNum(k);
+    b.appendChild(sq);
+    b.addEventListener('click', async () => {
+      const target = pendingImgSel;
+      hideImgSlots();
+      if (target) await snapToSlot(k, target);
+    });
+    row.appendChild(b);
+  });
+  const x = document.createElement('button');
+  x.className = 'cat-chip';
+  x.textContent = '\u2715';
+  x.addEventListener('click', hideImgSlots);
+  row.appendChild(x);
+  row.style.display = 'flex';
+}
+function hideImgSlots(){
+  pendingImgSel = null;
+  $('imgslots').style.display = 'none';
 }
 
 function drawCats(){
@@ -1275,7 +1394,11 @@ function drawCats(){
       b.appendChild(ok);
     }
     if (isImg) b.addEventListener('click', imageChipClick);
-    else b.addEventListener('click', () => saved ? applyToSelection(cat) : captureFromSelection(cat));
+    else b.addEventListener('click', async () => {
+      const s0 = await getSelection();
+      if (s0.slideId && !s0.shape){ toggleGhosts(); return; }
+      if (saved) applyToSelection(cat); else captureFromSelection(cat);
+    });
     el.appendChild(b);
   });
   const tb = $('teachBtn');
@@ -1868,6 +1991,7 @@ async function resolveAnchors(openNotes){
             x.name.indexOf('CriTickPin-') !== 0 &&
             x.name.indexOf('CriTickLabel-') !== 0 &&
             x.name.indexOf('CriTickCat-') !== 0 &&
+            x.name.indexOf('CriTickGhost-') !== 0 &&
             cx >= x.left && cx <= x.left + x.width &&
             cy >= x.top && cy <= x.top + x.height);
           let obj = null, isGroup = false;
@@ -1896,7 +2020,7 @@ function claudePrompt(anchors){
   });
   let out = 'Please apply the following corrections to this presentation. ';
   out += 'Go slide by slide and make only the changes listed. ';
-  out += 'Ignore any images or text boxes whose names start with CriTickPin-, CriTickLabel-, or CriTickCat- \u2014 do not move, edit, or delete them. ';
+  out += 'Ignore any images or text boxes whose names start with CriTick \u2014 do not move, edit, or delete them. ';
   out += 'Rules: (1) When zooming into or cropping an image, CROP it \u2014 never stretch it or change its aspect ratio. ';
   out += '(2) A correction applies to the single element at the pin position given \u2014 when that element is inside a group, act only on that element, never on the whole group, unless the correction explicitly says otherwise. ';
   out += '(3) Work fast: apply text and simple property changes directly \u2014 do not capture or visually inspect slides for them. ';
