@@ -172,7 +172,7 @@
 </footer>
 
 <input type="file" id="imgpick" accept="image/png,image/jpeg" style="display:none;">
-<input type="file" id="slidepick" accept=".pptx" style="display:none;">
+<input type="file" id="slidepick" accept=".pptx" multiple style="display:none;">
 <div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
@@ -287,6 +287,7 @@ const STR = {
     tplRemove: 'Remove',
     tplRemoveTip: 'Remove the selected template from the menu',
     tTplAdded: n => 'Template added: ' + n,
+    tTplAddedMany: n => n + ' templates added',
     tTplRemoved: 'Template removed',
     tTplNone: 'Choose a template first',
     tSlidesInserted: 'Template slides inserted',
@@ -1650,21 +1651,26 @@ $('tplAddBtn').addEventListener('click', () => {
   $('slidepick').click();
 });
 $('slidepick').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try{
-    const dataUrl = await new Promise((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(r.result);
-      r.onerror = () => rej(new Error('read'));
-      r.readAsDataURL(file);
-    });
-    const name = file.name.replace(/\.pptx$/i, '');
-    await tplPut({name: name, b64: dataUrl.split(',')[1], ts: Date.now()});
-    await drawTplMenu();
-    $('tplSelect').value = name;
-    toast(t('tTplAdded')(name));
-  }catch(err){ toast(t('tSlidesFail')); }
+  const files = [...e.target.files];
+  if (!files.length) return;
+  let added = 0, lastName = '';
+  for (const file of files){
+    try{
+      const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(new Error('read'));
+        r.readAsDataURL(file);
+      });
+      const name = file.name.replace(/\.pptx$/i, '');
+      await tplPut({name: name, b64: dataUrl.split(',')[1], ts: Date.now()});
+      added++; lastName = name;
+    }catch(err){}
+  }
+  await drawTplMenu();
+  if (added === 1){ $('tplSelect').value = lastName; toast(t('tTplAdded')(lastName)); }
+  else if (added > 1) toast(t('tTplAddedMany')(added));
+  else toast(t('tSlidesFail'));
 });
 
 $('tplRemoveBtn').addEventListener('click', async () => {
