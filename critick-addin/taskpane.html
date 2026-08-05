@@ -111,7 +111,7 @@
   #iconfilter:focus{border-color:var(--pin);}
   #icongrid .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; unicode-bidi:plaintext;}
   #icongrid .iconmsg{font-size:11px; color:var(--muted); text-align:center; padding:6px;}
-  #tplSelect, #iconSelect, #logoSelect, #bgSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px; background:var(--bg); outline:none; min-width:0;}
+   #tplSelect, #iconSelect, #logoSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px; background:var(--bg); outline:none; min-width:0;}
 
   footer{padding:8px 14px; background:var(--panel); border-top:1px solid var(--line);}
   #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:5px; min-height:12px;}
@@ -197,17 +197,6 @@
     <div class="row">
       <button id="logoAddBtn" class="btn"></button>
       <button id="logoRemoveBtn" class="btn"></button>
-    </div>
-  </div>
-  <div class="sec">
-    <div class="seclabel" id="secBg"></div>
-    <div class="row">
-      <select id="bgSelect"></select>
-      <button id="bgApplyBtn" class="btn primary"></button>
-    </div>
-    <div class="row">
-      <button id="bgAddBtn" class="btn"></button>
-      <button id="bgRemoveBtn" class="btn"></button>
     </div>
   </div>
   <div class="sec">
@@ -363,22 +352,17 @@ const STR = {
     iconsLoadFail: 'Could not load the icon library',
     tIconFail: 'Could not insert the icon',
     secLogos: 'Logos',
-    secBg: 'Backgrounds',
     libChoose: 'Choose…',
     libInsert: 'Insert',
-    libApply: 'Apply',
     libAdd: '+ Add…',
     libRemove: 'Remove',
     libAddImgTip: 'Pick image or SVG files once — saved on this computer only, never uploaded',
-    libAddBgTip: 'Pick image files once — saved on this computer only, never uploaded',
     tAssetAdded: n => 'Added: ' + n,
     tAssetAddedMany: n => n + ' added',
     tAssetRemoved: 'Removed',
     tAssetNone: 'Choose one first',
     tAssetFail: 'Could not add — use PNG, JPG or SVG',
     tImgFail: 'Could not insert the image',
-    tBgApplied: 'Background applied',
-    tBgFail: 'Could not apply the background',
     tplChoose: 'Choose a slide…',
     tplInsert: 'Insert',
     tplInsertTip: 'Insert after the current slide, fully editable',
@@ -416,16 +400,12 @@ function applyLang(){
   $('secIcons').textContent = t('secIcons');
   $('secTpl').textContent = t('secTpl');
   $('secLogos').textContent = t('secLogos');
-  $('secBg').textContent = t('secBg');
   $('iconInsertBtn').textContent = t('libInsert');
   $('iconAddBtn').textContent = t('libAdd'); $('iconAddBtn').title = t('libAddImgTip');
   $('iconRemoveBtn').textContent = t('libRemove');
   $('logoInsertBtn').textContent = t('libInsert');
   $('logoAddBtn').textContent = t('libAdd'); $('logoAddBtn').title = t('libAddImgTip');
   $('logoRemoveBtn').textContent = t('libRemove');
-  $('bgApplyBtn').textContent = t('libApply');
-  $('bgAddBtn').textContent = t('libAdd'); $('bgAddBtn').title = t('libAddBgTip');
-  $('bgRemoveBtn').textContent = t('libRemove');
   $('layouthint').textContent = t('layoutHint');
   $('tplInsertBtn').textContent = t('tplInsert');
   $('tplInsertBtn').title = t('tplInsertTip');
@@ -1840,8 +1820,7 @@ function assetDel(db, store, name){
 
 const LIB = {
   icon: {db: 'critick-icons', store: 'icon', sel: 'iconSelect', maxPt: 90},
-  logo: {db: 'critick-logos', store: 'logo', sel: 'logoSelect', maxPt: 200},
-  bg:   {db: 'critick-backgrounds', store: 'bg', sel: 'bgSelect'}
+  logo: {db: 'critick-logos', store: 'logo', sel: 'logoSelect', maxPt: 200}
 };
 
 /* --- svg helpers (reused for uploaded .svg assets) --- */
@@ -1922,7 +1901,6 @@ async function drawKindMenu(kind){
 async function drawLibrary(){
   await drawKindMenu('icon');
   await drawKindMenu('logo');
-  await drawKindMenu('bg');
   await drawTplMenu();
 }
 
@@ -1957,56 +1935,6 @@ async function insertImageAsset(rec, maxPt){
       {coercionType: Office.CoercionType.Image, imageLeft: 40, imageTop: 40, imageWidth: iw, imageHeight: ih},
       r => res(r.status === Office.AsyncResultStatus.Succeeded));
   });
-}
-
-/* try every known way to push a shape behind everything else */
-function sendShapeBack(shape){
-  const S = (typeof PowerPoint !== 'undefined' && PowerPoint.ShapeZOrder) ? PowerPoint.ShapeZOrder : {};
-  const cands = [S.sendToBack, S.toBack, S.sendBackward, 'SendToBack', 'sendToBack', 'toBack'];
-  for (let i = 0; i < cands.length; i++){
-    const v = cands[i];
-    if (v == null) continue;
-    try{ shape.setZOrder(v); return true; }catch(e){}
-  }
-  return false;
-}
-
-/* apply a full-bleed background behind slide content (16:9 assumed) */
-async function applyBackground(rec){
-  lastOp = Date.now();
-  const W = 960, H = 540;
-  let before = [];
-  try{
-    await PowerPoint.run(async ctx => {
-      const sl = ctx.presentation.getSelectedSlides();
-      sl.load('items/id'); await ctx.sync();
-      if (!sl.items.length) return;
-      const shapes = sl.items[0].shapes; shapes.load('items/name'); await ctx.sync();
-      before = shapes.items.map(s => s.name);
-    });
-  }catch(e){}
-  const b64 = (rec.isSvg && rec.text) ? await svgToPngBase64(rec.text, W * 2, H * 2) : rec.b64;
-  const ok = await new Promise(res => {
-    try{
-      Office.context.document.setSelectedDataAsync(b64,
-        {coercionType: Office.CoercionType.Image, imageLeft: 0, imageTop: 0, imageWidth: W, imageHeight: H},
-        r => res(r.status === Office.AsyncResultStatus.Succeeded));
-    }catch(e){ res(false); }
-  });
-  if (!ok) return false;
-  try{
-    await PowerPoint.run(async ctx => {
-      const sl = ctx.presentation.getSelectedSlides();
-      sl.load('items/id'); await ctx.sync();
-      if (!sl.items.length) return;
-      const shapes = sl.items[0].shapes; shapes.load('items/name'); await ctx.sync();
-      let fresh = shapes.items.find(s => before.indexOf(s.name) === -1);
-      if (!fresh && shapes.items.length) fresh = shapes.items[shapes.items.length - 1];
-      if (fresh) sendShapeBack(fresh);
-      await ctx.sync();
-    });
-  }catch(e){}
-  return true;
 }
 
 /* one hidden picker, routed by the last-clicked "Add" button */
@@ -2063,22 +1991,6 @@ $('logoAddBtn').addEventListener('click', () => libAdd('logo'));
 $('logoRemoveBtn').addEventListener('click', async () => {
   const sel = $('logoSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
   try{ await assetDel(LIB.logo.db, LIB.logo.store, sel.value); await drawKindMenu('logo'); toast(t('tAssetRemoved')); }catch(e){}
-});
-
-/* backgrounds */
-$('bgApplyBtn').addEventListener('click', async () => {
-  const sel = $('bgSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
-  try{
-    const rec = await assetGet(LIB.bg.db, LIB.bg.store, sel.value);
-    if (!rec){ toast(t('tAssetNone')); return; }
-    const ok = await applyBackground(rec);
-    toast(ok ? t('tBgApplied') : t('tBgFail'));
-  }catch(e){ toast(t('tBgFail')); }
-});
-$('bgAddBtn').addEventListener('click', () => libAdd('bg'));
-$('bgRemoveBtn').addEventListener('click', async () => {
-  const sel = $('bgSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
-  try{ await assetDel(LIB.bg.db, LIB.bg.store, sel.value); await drawKindMenu('bg'); toast(t('tAssetRemoved')); }catch(e){}
 });
 
 
