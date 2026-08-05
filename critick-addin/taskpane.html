@@ -101,11 +101,12 @@
   .lrow + .lrow{margin-top:8px;}
   .hint{font-size:11px; color:var(--muted); line-height:1.5; padding:10px 14px;}
 
-  #icongrid{display:grid; grid-template-columns:repeat(6, 1fr); gap:6px;}
-  #icongrid button{border:1px solid var(--line); border-radius:8px; background:var(--bg); padding:5px; cursor:pointer; aspect-ratio:1;}
-  #icongrid button:hover{border-color:var(--pin);}
-  #icongrid img{width:100%; height:100%; object-fit:contain;}
-  #icongrid .iconmsg{grid-column:1/-1; font-size:11px; color:var(--muted); text-align:center; padding:6px;}
+  #icongrid{display:flex; flex-direction:column; gap:2px; max-height:340px; overflow-y:auto;}
+  #icongrid button{display:flex; align-items:center; gap:8px; border:none; border-radius:8px; background:none; padding:5px 8px; cursor:pointer; font-family:inherit; font-size:12px; color:var(--ink); text-align:start; width:100%;}
+  #icongrid button:hover{background:var(--pin-soft);}
+  #icongrid img{width:20px; height:20px; object-fit:contain; flex:none;}
+  #icongrid .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; unicode-bidi:plaintext;}
+  #icongrid .iconmsg{font-size:11px; color:var(--muted); text-align:center; padding:6px;}
   #tplSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--bg); outline:none; min-width:0;}
 
   footer{padding:8px 14px; background:var(--panel); border-top:1px solid var(--line);}
@@ -137,7 +138,6 @@
 <section id="tab-notes" class="tab">
   <div id="mebar"></div>
   <div class="sec" id="composerbox">
-    <div id="anchor"></div>
     <input id="noteinput" type="text" dir="auto">
     <div id="people"></div>
     <button id="addbtn" class="btn primary"></button>
@@ -251,7 +251,7 @@ const STR = {
     personName: 'Name',
     filterLabel: 'Show',
     everyone: 'Everyone',
-    emptyNew: 'Write what to change — the pin will say where. Press Enter, then drag the pin onto the thing.',
+    emptyNew: 'No corrections yet.',
     emptyFilter: 'No notes for this filter.',
     slideWord: 'Slide',
     slideMeta: 'slide',
@@ -559,7 +559,7 @@ function watchSelection(){
   updateAnchor();
 }
 async function updateAnchor(){
-  if (!ready){ $('anchor').textContent = t('anchorDefault'); return; }
+  if (!ready) return;
   try{
     await PowerPoint.run(async ctx => {
       const shapes = ctx.presentation.getSelectedShapes();
@@ -580,28 +580,18 @@ async function updateAnchor(){
 
       if (selName && selName.indexOf('CriTickPin-') === 0){
         highlightNote(selName.slice('CriTickPin-'.length));
-        $('anchor').textContent = t('anchorPin');
         updateAddBtnLabel();
         return;
       }
       clearHighlight();
       reconcilePins();
       if (shapes.items.length){
-        const nm = shapes.items[0].name;
-        $('anchor').innerHTML = '';
-        $('anchor').appendChild(document.createTextNode(t('anchorAttached')));
-        const b = document.createElement('b');
-        b.textContent = nm;
-        $('anchor').appendChild(b);
         updateAddBtnLabel(t('addObject'));
       } else {
-        $('anchor').textContent = t('anchorDefault');
         updateAddBtnLabel();
       }
     });
-  }catch(e){
-    $('anchor').textContent = t('anchorDefault');
-  }
+  }catch(e){}
 }
 function highlightNote(uid){
   clearHighlight();
@@ -1757,13 +1747,19 @@ async function loadIcons(){
       grid.innerHTML = '<div class="iconmsg">' + t('iconsEmpty') + '</div>';
       return;
     }
+    files.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
     files.forEach(f => {
+      const nm = f.name.replace(/\.svg$/i, '');
       const b = document.createElement('button');
-      b.title = f.name.replace(/\.svg$/i, '');
+      b.title = nm;
       const im = document.createElement('img');
       im.src = f.download_url;
-      im.alt = f.name;
+      im.alt = nm;
       b.appendChild(im);
+      const sp = document.createElement('span');
+      sp.className = 'nm';
+      sp.textContent = nm;
+      b.appendChild(sp);
       b.addEventListener('click', () => insertIcon(f.download_url));
       grid.appendChild(b);
     });
