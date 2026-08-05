@@ -6,7 +6,7 @@
 <title>CriTick</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --bg:#FAF9F6; --panel:#FFFFFF; --ink:#1C1B1A; --muted:#8A867E; --line:#E7E4DD;
@@ -17,7 +17,10 @@
   body{font-family:'Heebo',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:13px; display:flex; flex-direction:column;}
 
   header{padding:12px 14px 8px; background:var(--panel);}
-  header .brand{font-weight:700; font-size:16px;}
+  header{text-align:center;}
+  #brandfull{height:96px; width:auto; display:block; margin:0 auto;}
+  header .brand{font-family:'Baloo 2','Heebo',sans-serif; font-weight:800; font-size:17px; display:flex; align-items:center; justify-content:center; gap:7px;}
+  header .sub{text-align:center;}
   header .brand span{color:var(--pin);}
   header .sub{font-size:11px; color:var(--muted); margin-top:1px;}
 
@@ -104,7 +107,8 @@
   #icongrid{display:flex; flex-direction:column; gap:2px; max-height:340px; overflow-y:auto;}
   #icongrid button{display:flex; align-items:center; gap:8px; border:none; border-radius:8px; background:none; padding:5px 8px; cursor:pointer; font-family:inherit; font-size:12px; color:var(--ink); text-align:start; width:100%;}
   #icongrid button:hover{background:var(--pin-soft);}
-  #icongrid img{width:20px; height:20px; object-fit:contain; flex:none;}
+  #iconfilter{width:100%; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; outline:none; background:var(--bg); margin-bottom:6px;}
+  #iconfilter:focus{border-color:var(--pin);}
   #icongrid .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; unicode-bidi:plaintext;}
   #icongrid .iconmsg{font-size:11px; color:var(--muted); text-align:center; padding:6px;}
   #tplSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--bg); outline:none; min-width:0;}
@@ -125,7 +129,8 @@
 <body>
 
 <header>
-  <div class="brand">Cri<span>Tick</span></div>
+  <img id="brandfull" src="assets/logo-full.png" alt="CriTick" onerror="this.style.display='none'; document.getElementById('brandtext').style.display='flex';">
+  <div class="brand" id="brandtext" style="display:none;">Cri<span>Tick</span></div>
   <div class="sub" id="sub"></div>
 </header>
 
@@ -174,6 +179,7 @@
 <section id="tab-assets" class="tab" style="display:none;">
   <div class="sec">
     <div class="seclabel" id="secIcons"></div>
+    <input id="iconfilter" type="text" dir="auto">
     <div id="icongrid"></div>
   </div>
   <div class="sec">
@@ -323,6 +329,8 @@ const STR = {
     secTpl: 'Templates',
     layoutHint: 'Tip: click a category with nothing selected to show or hide the layout frames on this slide.',
     iconsEmpty: 'No icons yet — upload .svg files to critick-addin/icons on GitHub',
+    iconFilterPh: 'Filter…',
+    iconsNoMatch: 'No icons match',
     iconsLoadFail: 'Could not load the icon library',
     tIconFail: 'Could not insert the icon',
     tplChoose: 'Choose a template…',
@@ -361,6 +369,7 @@ function applyLang(){
   $('tabbtn-assets').textContent = t('tabAssets');
   $('secIcons').textContent = t('secIcons');
   $('secTpl').textContent = t('secTpl');
+  $('iconfilter').placeholder = t('iconFilterPh');
   $('layouthint').textContent = t('layoutHint');
   $('tplInsertBtn').textContent = t('tplInsert');
   $('tplInsertBtn').title = t('tplInsertTip');
@@ -1735,34 +1744,40 @@ async function syncLayoutDefs(){
 /* ================= icon library ================= */
 const ICONS_API = 'https://api.github.com/repos/giladutd-max/Critick/contents/critick-addin/icons';
 
+let iconFiles = [];
+function renderIcons(){
+  const grid = $('icongrid');
+  const q = ($('iconfilter').value || '').trim().toLowerCase();
+  grid.innerHTML = '';
+  const list = iconFiles.filter(f => f.nm.toLowerCase().indexOf(q) !== -1);
+  if (!list.length){
+    grid.innerHTML = '<div class="iconmsg">' + (iconFiles.length ? t('iconsNoMatch') : t('iconsEmpty')) + '</div>';
+    return;
+  }
+  list.forEach(f => {
+    const b = document.createElement('button');
+    b.title = f.nm;
+    const sp = document.createElement('span');
+    sp.className = 'nm';
+    sp.textContent = f.nm;
+    b.appendChild(sp);
+    b.addEventListener('click', () => insertIcon(f.url));
+    grid.appendChild(b);
+  });
+}
+$('iconfilter').addEventListener('input', renderIcons);
+
 async function loadIcons(){
   const grid = $('icongrid');
   grid.innerHTML = '<div class="iconmsg">…</div>';
   try{
     const r = await fetch(ICONS_API);
     if (!r.ok) throw new Error('http ' + r.status);
-    const files = (await r.json()).filter(f => f.name.toLowerCase().endsWith('.svg'));
-    grid.innerHTML = '';
-    if (!files.length){
-      grid.innerHTML = '<div class="iconmsg">' + t('iconsEmpty') + '</div>';
-      return;
-    }
-    files.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-    files.forEach(f => {
-      const nm = f.name.replace(/\.svg$/i, '');
-      const b = document.createElement('button');
-      b.title = nm;
-      const im = document.createElement('img');
-      im.src = f.download_url;
-      im.alt = nm;
-      b.appendChild(im);
-      const sp = document.createElement('span');
-      sp.className = 'nm';
-      sp.textContent = nm;
-      b.appendChild(sp);
-      b.addEventListener('click', () => insertIcon(f.download_url));
-      grid.appendChild(b);
-    });
+    iconFiles = (await r.json())
+      .filter(f => f.name.toLowerCase().endsWith('.svg'))
+      .map(f => ({nm: f.name.replace(/\.svg$/i, ''), url: f.download_url}))
+      .sort((a, b) => a.nm.localeCompare(b.nm, undefined, {sensitivity: 'base'}));
+    renderIcons();
   }catch(e){
     grid.innerHTML = '<div class="iconmsg">' + t('iconsLoadFail') + '</div>';
   }
