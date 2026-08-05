@@ -211,7 +211,7 @@
 <script>
 const KEY = 'critick-notes';
 const KEY_PEOPLE = 'critick-people';
-const PIN = '#A83254', SELF = '#6E6B64';
+const PIN = '#A83254', SELF = '#7867B9';
 const ROSTER = {
   'Gilad':'#A83254','Noa':'#2563EB','Issi':'#0E9F6E','Merav':'#D97706','Daniel':'#7C3AED',
   'Maya':'#DB2777','Adi':'#0891B2','Tsofit':'#65A30D','Michal':'#92400E'
@@ -326,25 +326,25 @@ const STR = {
     tabLayout: 'Layout',
     tabAssets: 'Library',
     secIcons: 'Icons',
-    secTpl: 'Templates',
+    secTpl: 'Slides',
     layoutHint: 'Tip: click a category with nothing selected to show or hide the layout frames on this slide.',
     iconsEmpty: 'No icons yet — upload .svg files to critick-addin/icons on GitHub',
     iconFilterPh: 'Filter…',
     iconsNoMatch: 'No icons match',
     iconsLoadFail: 'Could not load the icon library',
     tIconFail: 'Could not insert the icon',
-    tplChoose: 'Choose a template…',
+    tplChoose: 'Choose a slide…',
     tplInsert: 'Insert',
-    tplInsertTip: 'Insert this template\u2019s slides after the current slide, fully editable',
-    tplAdd: '+ Add template…',
+    tplInsertTip: 'Insert after the current slide, fully editable',
+    tplAdd: '+ Add slide…',
     tplAddTip: 'Pick a .pptx once — it becomes a menu item on this computer (the file never leaves your machine)',
     tplRemove: 'Remove',
-    tplRemoveTip: 'Remove the selected template from the menu',
-    tTplAdded: n => 'Template added: ' + n,
-    tTplAddedMany: n => n + ' templates added',
-    tTplRemoved: 'Template removed',
-    tTplNone: 'Choose a template first',
-    tSlidesInserted: 'Template slides inserted',
+    tplRemoveTip: 'Remove the selected slide from the menu',
+    tTplAdded: n => 'Slide added: ' + n,
+    tTplAddedMany: n => n + ' slides added',
+    tTplRemoved: 'Slide removed',
+    tTplNone: 'Choose a slide first',
+    tSlidesInserted: 'Slides inserted',
     cleanSlate: 'Clean slate',
     cleanTip: 'Delete everything SlideKick stored in this presentation \u2014 notes, layout, pins, labels',
     cleanConfirm: 'Press again to wipe this presentation',
@@ -702,7 +702,7 @@ async function placePinImage(note){
         const sl = ctx.presentation.slides.getItem(note.slideId);
         const tb = sl.shapes.addTextBox(String(note.pinNum) + '. ' + note.text, {left: left + 30, top: Math.max(2, top - 2), width: 190, height: 36});
         tb.name = 'CriTickLabel-' + note.uid;
-        labelStyle(tb);
+        labelStyle(tb, personColor(note));
         await ctx.sync();
       });
     }
@@ -1958,12 +1958,18 @@ $('tplRemoveBtn').addEventListener('click', async () => {
 drawTplMenu();
 
 /* ================= notes as text on slides ================= *//* ================= notes as text on slides ================= */
-function labelStyle(tb){
+function labelStyle(tb, color){
   try{
     tb.fill.setSolidColor('#FFF9E8');
     const tr = tb.textFrame.textRange;
-    tr.font.size = 10;
+    tr.font.name = 'Arial';
+    tr.font.size = 11;
     tr.font.color = '#1C1B1A';
+    try{
+      tb.lineFormat.color = color || '#7867B9';
+      tb.lineFormat.weight = 2.25;
+      tb.lineFormat.visible = true;
+    }catch(e){}
   }catch(e){}
 }
 async function setLabels(on){
@@ -1994,7 +2000,7 @@ async function setLabels(on){
             const py = pin ? pin.top : 14;
             const tb = loaded[id].shapes.addTextBox(String(n.pinNum) + '. ' + n.text, {left: px + 30, top: Math.max(2, py - 2), width: 190, height: 36});
             tb.name = 'CriTickLabel-' + n.uid;
-            labelStyle(tb);
+            labelStyle(tb, personColor(n));
           });
         }
       });
