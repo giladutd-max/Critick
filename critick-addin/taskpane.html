@@ -14,103 +14,110 @@
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html,body{height:100%;}
-  body{font-family:'Heebo',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; display:flex; flex-direction:column;}
+  body{font-family:'Heebo',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:13px; display:flex; flex-direction:column;}
 
-  header{padding:12px 14px 10px; background:var(--panel); border-bottom:1px solid var(--line); position:relative;}
+  header{padding:12px 14px 8px; background:var(--panel);}
   header .brand{font-weight:700; font-size:16px;}
   header .brand span{color:var(--pin);}
-  header .sub{font-size:11px; color:var(--muted); margin-top:2px;}
+  header .sub{font-size:11px; color:var(--muted); margin-top:1px;}
+
+  #tabs{display:flex; background:var(--panel); border-bottom:1px solid var(--line); padding:0 8px;}
+  #tabs button{flex:1; font-family:inherit; font-size:12px; font-weight:500; background:none; border:none; border-bottom:2px solid transparent; padding:8px 4px; cursor:pointer; color:var(--muted);}
+  #tabs button.sel{color:var(--ink); border-bottom-color:var(--pin);}
+  #tabs button:hover{color:var(--ink);}
+
+  .tab{flex:1; display:flex; flex-direction:column; min-height:0; overflow-y:auto;}
+  .sec{padding:10px 14px; background:var(--panel);}
+  .sec + .sec{border-top:1px solid var(--line);}
+  .seclabel{font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;}
+
+  .btn{font-family:inherit; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:7px 10px; cursor:pointer; color:var(--ink);}
+  .btn:hover{border-color:#C9C5BC;}
+  .btn.primary{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .btn.primary:hover{background:#333;}
+  .btn.arm{background:var(--pin); color:#fff; border-color:var(--pin);}
+  .btn:disabled{opacity:.5; cursor:default;}
+  .row{display:flex; gap:6px;}
+  .row + .row{margin-top:6px;}
+  .row .btn{flex:1;}
 
   #mebar{display:none; align-items:center; gap:6px; padding:7px 14px; background:var(--panel); border-bottom:1px solid var(--line); font-size:12px; flex-wrap:wrap;}
-  #mebar .pdot{width:9px; height:9px; border-radius:50%; display:inline-block; flex:none;}
   #mebar.on{display:flex;}
+  #mebar .pdot{width:8px; height:8px; border-radius:50%; display:inline-block; flex:none;}
   #mebar .mine-btn{font-family:inherit; font-size:11px; font-weight:500; border:1px solid var(--pin); color:var(--pin); background:var(--panel); border-radius:8px; padding:2px 8px; cursor:pointer;}
   #mebar .mine-btn:hover{background:var(--pin); color:#fff;}
   #mebar .who-chip{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:2px 9px; cursor:pointer; background:var(--panel);}
   #mebar .who-chip:hover{border-color:var(--pin);}
 
-  #composerbox{padding:12px 14px 10px; background:var(--panel); border-bottom:1px solid var(--line);}
-  #anchor{font-size:11px; color:var(--muted); margin-bottom:6px; min-height:15px;}
+  #anchor{font-size:11px; color:var(--muted); margin-bottom:6px; min-height:14px;}
   #anchor b{color:var(--pin); font-weight:500;}
-  #noteinput{width:100%; font-family:inherit; font-size:14px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; background:var(--bg);}
+  #noteinput{width:100%; font-family:inherit; font-size:13px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; outline:none; background:var(--bg);}
   #noteinput:focus{border-color:var(--pin);}
-  #people{display:flex; flex-wrap:wrap; gap:6px; padding:8px 0 2px;}
-  .chip{flex:none; display:flex; align-items:center; gap:5px; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:3px 9px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
-  .chip .dot{width:9px; height:9px; border-radius:50%; flex:none;}
+  #people{display:flex; flex-wrap:wrap; gap:4px; padding:8px 0 2px;}
+  .chip{flex:none; display:flex; align-items:center; gap:4px; font-size:11px; border:1px solid var(--line); border-radius:11px; padding:2px 8px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
+  .chip .dot{width:8px; height:8px; border-radius:50%; flex:none;}
   .chip.sel{border-color:var(--ink); background:var(--bg); font-weight:500;}
-  #newperson{width:80px; font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:3px 9px; outline:none; display:none;}
-  #addbtn{width:100%; margin-top:8px; font-family:inherit; font-size:13px; font-weight:500; background:var(--ink); color:#fff; border:none; border-radius:8px; padding:8px; cursor:pointer;}
-  #addbtn:hover{background:#333;}
-  #addbtn:disabled{opacity:.5; cursor:default;}
+  #newperson{width:76px; font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:11px; padding:2px 8px; outline:none; display:none;}
+  #addbtn{width:100%; margin-top:8px;}
 
-  #layoutbar{padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
-  #layoutbar .lrow{display:flex; gap:6px; flex-wrap:wrap;}
-  #layoutbar .lrow + .lrow{margin-top:6px;}
-  .cat-chip{flex:none; display:flex; align-items:center; gap:5px; font-size:11px; border:1px solid var(--line); border-radius:8px; padding:3px 9px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
-  .cat-chip .sq{width:11px; height:11px; border-radius:3px; color:#fff; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none;}
-  .cat-chip:hover{border-color:#C9C5BC;}
-  .lbtn{flex:1; font-family:inherit; font-size:12px; background:var(--ink); color:#fff; border:none; border-radius:8px; padding:6px; cursor:pointer;}
-  .lbtn:hover{background:#333;}
-  .lbtn.ghost{background:var(--panel); color:var(--ink); border:1px solid var(--line);}
-  .lbtn.ghost:hover{border-color:#C9C5BC;}
-  .lbtn.teaching{background:var(--pin); color:#fff; border-color:var(--pin);}
-  #teachsel{margin-top:6px; font-size:11px; padding:5px 8px; border-radius:8px; background:var(--bg); border:1px solid var(--line); color:var(--muted);}
-  #teachsel.ok{color:var(--done); border-color:var(--done); background:var(--done-soft); font-weight:500;}
-  .cat-chip .has{color:var(--done); font-weight:700; margin-inline-start:2px;}
-  #iconbar{padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
-  #icongrid{display:none; grid-template-columns:repeat(6, 1fr); gap:6px; margin-top:8px;}
-  #icongrid.on{display:grid;}
-  #icongrid button{border:1px solid var(--line); border-radius:8px; background:var(--bg); padding:5px; cursor:pointer; aspect-ratio:1;}
-  #icongrid button:hover{border-color:var(--pin);}
-  #icongrid img{width:100%; height:100%; object-fit:contain;}
-  #icongrid .iconmsg{grid-column:1/-1; font-size:11px; color:var(--muted); text-align:center; padding:6px;}
-  #filterbar{display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--panel); border-bottom:1px solid var(--line);}
+  #filterbar{display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--panel); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
   #filterbar label{font-size:11px; color:var(--muted);}
   #filterPerson{flex:1; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:4px 6px; background:var(--bg); outline:none; min-width:0;}
   #progress{font-size:11px; color:var(--muted); white-space:nowrap;}
   #progress b{color:var(--done); font-weight:500;}
 
-  #notes{flex:1; overflow-y:auto;}
-  .slidehead{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:12px 14px 4px; cursor:pointer;}
+  #notes{flex:1; min-height:80px; overflow-y:auto; background:var(--bg);}
+  .slidehead{font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:10px 14px 3px; cursor:pointer;}
   .slidehead:hover{color:var(--pin);}
-  .empty{padding:12px 14px; color:var(--muted); font-size:12px; line-height:1.5; text-align:center;}
-  .note{display:flex; gap:8px; padding:8px 14px; align-items:flex-start; cursor:pointer;}
+  .empty{padding:14px; color:var(--muted); font-size:12px; line-height:1.5; text-align:center;}
+  .note{display:flex; gap:8px; padding:8px 14px; align-items:flex-start; cursor:pointer; background:var(--panel); border-bottom:1px solid var(--line);}
   .note:hover{background:var(--pin-soft);}
   .note.hl{background:var(--pin-soft); box-shadow:inset 3px 0 0 var(--pin);}
   .note .num{flex:none; width:20px; height:20px; border-radius:50%; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;}
   .note .body{flex:1; min-width:0;}
-  .note .txt{font-size:13px; line-height:1.45; word-wrap:break-word; unicode-bidi:plaintext;}
+  .note .txt{font-size:13px; line-height:1.4; word-wrap:break-word; unicode-bidi:plaintext;}
   .note.st-fixed .txt{color:var(--muted); text-decoration:line-through;}
   .txt-edit{width:100%; font-family:inherit; font-size:13px; border:1px solid var(--pin); border-radius:6px; padding:3px 6px; outline:none;}
-  .note .meta{font-size:11px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:5px; flex-wrap:wrap;}
-  .note .meta .pdot{width:8px; height:8px; border-radius:50%; display:inline-block;}
-  .note .meta .assign{cursor:pointer; display:inline-flex; align-items:center; gap:5px;}
+  .note .meta{font-size:10px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}
+  .note .meta .pdot{width:7px; height:7px; border-radius:50%; display:inline-block;}
+  .note .meta .assign{cursor:pointer; display:inline-flex; align-items:center; gap:4px;}
   .note .meta .assign:hover{color:var(--ink); text-decoration:underline;}
   .assign-sel{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:6px; background:var(--panel);}
-  .note .meta .st{font-weight:500;}
+  .note .st{font-weight:500;}
   .note .st.fixed{color:var(--done);}
   .note .tag{display:inline-block; font-size:10px; color:var(--muted); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:0 5px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .note .acts{flex:none; display:flex; gap:0;}
+  .note .acts{flex:none; display:flex;}
   .note .acts button{border:none; background:none; padding:2px 3px; font-size:13px; color:var(--muted); cursor:pointer; font-family:inherit; line-height:1;}
   .note .acts button:hover{color:var(--ink);}
   .note .acts .eye.off{opacity:.35;}
   .note .acts .st-btn:hover{color:var(--done);}
   .note .acts .del:hover{color:var(--pin);}
 
-  footer{padding:10px 14px; background:var(--panel); border-top:1px solid var(--line);}
-  footer .row{display:flex; gap:8px;}
-  footer button{flex:1; font-family:inherit; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px; cursor:pointer; color:var(--ink);}
-  footer button:hover{border-color:#C9C5BC;}
-  footer button.arm{background:var(--pin); color:#fff; border-color:var(--pin);}
-  #tplSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--bg); outline:none; min-width:0;}
-  #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:6px; min-height:13px;}
+  .cat-chip{flex:none; display:flex; align-items:center; gap:5px; font-size:11px; border:1px solid var(--line); border-radius:8px; padding:4px 9px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
+  .cat-chip .sq{width:12px; height:12px; border-radius:3px; color:#fff; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none;}
+  .cat-chip:hover{border-color:#C9C5BC;}
+  .cat-chip .has{color:var(--done); font-weight:700; margin-inline-start:1px;}
+  .lrow{display:flex; gap:6px; flex-wrap:wrap;}
+  .lrow + .lrow{margin-top:8px;}
+  .hint{font-size:11px; color:var(--muted); line-height:1.5; padding:10px 14px;}
 
-  #claudebox{display:none; position:fixed; inset:0; background:rgba(28,27,26,.45); z-index:50; padding:20px 14px; }
+  #icongrid{display:grid; grid-template-columns:repeat(6, 1fr); gap:6px;}
+  #icongrid button{border:1px solid var(--line); border-radius:8px; background:var(--bg); padding:5px; cursor:pointer; aspect-ratio:1;}
+  #icongrid button:hover{border-color:var(--pin);}
+  #icongrid img{width:100%; height:100%; object-fit:contain;}
+  #icongrid .iconmsg{grid-column:1/-1; font-size:11px; color:var(--muted); text-align:center; padding:6px;}
+  #tplSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px; background:var(--bg); outline:none; min-width:0;}
+
+  footer{padding:8px 14px; background:var(--panel); border-top:1px solid var(--line);}
+  #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:5px; min-height:12px;}
+
+  #claudebox{display:none; position:fixed; inset:0; background:rgba(28,27,26,.45); z-index:50; padding:20px 14px;}
   #claudebox.on{display:flex; flex-direction:column; gap:8px;}
   #claudebox .inner{background:var(--panel); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;}
   #claudebox textarea{flex:1; min-height:0; width:100%; font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.5; border:1px solid var(--line); border-radius:8px; padding:8px; resize:none; outline:none; background:var(--bg);}
-  #claudebox .hint{font-size:11px; color:var(--muted); text-align:center;}
-  #toast{position:fixed; bottom:64px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; font-size:12px; padding:6px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:99; white-space:nowrap;}
+  #claudebox .hint{font-size:11px; color:var(--muted); text-align:center; padding:0;}
+
+  #toast{position:fixed; bottom:56px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; font-size:12px; padding:6px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:99; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis;}
   #toast.on{opacity:1;}
 </style>
 </head>
@@ -121,53 +128,70 @@
   <div class="sub" id="sub"></div>
 </header>
 
-<div id="mebar"></div>
+<nav id="tabs">
+  <button id="tabbtn-notes"></button>
+  <button id="tabbtn-layout"></button>
+  <button id="tabbtn-assets"></button>
+</nav>
 
-<div id="composerbox">
-  <div id="anchor"></div>
-  <input id="noteinput" type="text" dir="auto">
-  <div id="people"></div>
-  <button id="addbtn"></button>
-</div>
-
-<div id="layoutbar">
-  <div class="lrow" id="catchips"></div>
-  <div class="lrow" id="imgslots" style="display:none;"></div>
-  <div class="lrow">
-    <button id="updateAllBtn" class="lbtn"></button>
-    <button id="teachBtn" class="lbtn ghost"></button>
+<section id="tab-notes" class="tab">
+  <div id="mebar"></div>
+  <div class="sec" id="composerbox">
+    <div id="anchor"></div>
+    <input id="noteinput" type="text" dir="auto">
+    <div id="people"></div>
+    <button id="addbtn" class="btn primary"></button>
   </div>
-</div>
+  <div id="filterbar">
+    <label for="filterPerson" id="filterLabel"></label>
+    <select id="filterPerson"></select>
+    <span id="progress"></span>
+  </div>
+  <div id="notes"></div>
+  <div class="sec" id="noteactions">
+    <div class="row">
+      <button id="copyClaude" class="btn"></button>
+      <button id="labelsBtn" class="btn"></button>
+    </div>
+    <div class="row">
+      <button id="clearPins" class="btn"></button>
+    </div>
+  </div>
+</section>
 
-<div id="iconbar">
-  <button id="iconsToggle" class="lbtn ghost"></button>
-  <div id="icongrid" style="display:none;"></div>
-</div>
+<section id="tab-layout" class="tab" style="display:none;">
+  <div class="sec" id="layoutbar">
+    <div class="lrow" id="catchips"></div>
+    <div class="lrow" id="imgslots" style="display:none;"></div>
+    <div class="lrow">
+      <button id="updateAllBtn" class="btn primary"></button>
+      <button id="teachBtn" class="btn"></button>
+    </div>
+  </div>
+  <div class="hint" id="layouthint"></div>
+</section>
 
-<div id="filterbar">
-  <label for="filterPerson" id="filterLabel"></label>
-  <select id="filterPerson"></select>
-  <span id="progress"></span>
-</div>
-
-<div id="notes"></div>
+<section id="tab-assets" class="tab" style="display:none;">
+  <div class="sec">
+    <div class="seclabel" id="secIcons"></div>
+    <div id="icongrid"></div>
+  </div>
+  <div class="sec">
+    <div class="seclabel" id="secTpl"></div>
+    <div class="row">
+      <select id="tplSelect"></select>
+      <button id="tplInsertBtn" class="btn primary"></button>
+    </div>
+    <div class="row">
+      <button id="tplAddBtn" class="btn"></button>
+      <button id="tplRemoveBtn" class="btn"></button>
+    </div>
+  </div>
+</section>
 
 <footer>
   <div class="row">
-    <button id="copyClaude"></button>
-    <button id="labelsBtn"></button>
-  </div>
-  <div class="row">
-    <select id="tplSelect"></select>
-    <button id="tplInsertBtn"></button>
-  </div>
-  <div class="row">
-    <button id="tplAddBtn"></button>
-    <button id="tplRemoveBtn"></button>
-  </div>
-  <div class="row">
-    <button id="clearPins"></button>
-    <button id="cleanBtn"></button>
+    <button id="cleanBtn" class="btn"></button>
   </div>
   <div id="savedflag"></div>
 </footer>
@@ -198,6 +222,18 @@ let me = '';
 let lang = 'en';
 
 const $ = id => document.getElementById(id);
+
+/* ================= tabs ================= */
+const TAB_NAMES = ['notes', 'layout', 'assets'];
+function setTab(name){
+  TAB_NAMES.forEach(n => {
+    $('tab-' + n).style.display = (n === name) ? 'flex' : 'none';
+    $('tabbtn-' + n).classList.toggle('sel', n === name);
+  });
+  if (name === 'assets') loadIcons();
+}
+TAB_NAMES.forEach(n => $('tabbtn-' + n).addEventListener('click', () => setTab(n)));
+
 
 /* ================= i18n ================= */
 const STR = {
@@ -280,8 +316,12 @@ const STR = {
     tUpdated: n => n + ' element' + (n === 1 ? '' : 's') + ' re-arranged',
     tNothingBound: 'No elements matching the previous layout were found',
     tLayoutFail: 'Could not apply the layout',
-    iconsToggle: 'Icons',
-    iconsTip: 'Insert a team icon onto the current slide',
+    tabNotes: 'Notes',
+    tabLayout: 'Layout',
+    tabAssets: 'Library',
+    secIcons: 'Icons',
+    secTpl: 'Templates',
+    layoutHint: 'Tip: click a category with nothing selected to show or hide the layout frames on this slide.',
     iconsEmpty: 'No icons yet — upload .svg files to critick-addin/icons on GitHub',
     iconsLoadFail: 'Could not load the icon library',
     tIconFail: 'Could not insert the icon',
@@ -316,8 +356,12 @@ function applyLang(){
   $('copyClaude').title = t('copyClaudeTip');
   $('labelsBtn').textContent = labelsOn ? t('labelsHide') : t('labelsShow');
   $('labelsBtn').title = t('labelsTip');
-  $('iconsToggle').textContent = t('iconsToggle');
-  $('iconsToggle').title = t('iconsTip');
+  $('tabbtn-notes').textContent = t('tabNotes');
+  $('tabbtn-layout').textContent = t('tabLayout');
+  $('tabbtn-assets').textContent = t('tabAssets');
+  $('secIcons').textContent = t('secIcons');
+  $('secTpl').textContent = t('secTpl');
+  $('layouthint').textContent = t('layoutHint');
   $('tplInsertBtn').textContent = t('tplInsert');
   $('tplInsertBtn').title = t('tplInsertTip');
   $('tplAddBtn').textContent = t('tplAdd');
@@ -374,6 +418,7 @@ Office.onReady(info => {
     if (n.filterHidden === undefined) n.filterHidden = false;
   });
   applyLang();
+  setTab('notes');
   refreshSlideMap().then(async () => { drawNotes(); await applyFilterPins(); });
   watchSelection();
 });
@@ -1699,14 +1744,6 @@ async function syncLayoutDefs(){
 
 /* ================= icon library ================= */
 const ICONS_API = 'https://api.github.com/repos/giladutd-max/Critick/contents/critick-addin/icons';
-
-$('iconsToggle').addEventListener('click', async () => {
-  const grid = $('icongrid');
-  const on = !grid.classList.contains('on');
-  grid.classList.toggle('on', on);
-  grid.style.display = on ? 'grid' : 'none';
-  if (on) await loadIcons();
-});
 
 async function loadIcons(){
   const grid = $('icongrid');
