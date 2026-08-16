@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SlideKick</title>
+<title>CriTick</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
@@ -111,7 +111,9 @@
   #iconfilter:focus{border-color:var(--pin);}
   #icongrid .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; unicode-bidi:plaintext;}
   #icongrid .iconmsg{font-size:11px; color:var(--muted); text-align:center; padding:6px;}
-   #tplSelect, #iconSelect, #logoSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px; background:var(--bg); outline:none; min-width:0;}
+   .libsearch{width:100%; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px 10px; background:var(--bg); outline:none; margin-bottom:6px;}
+  .libsearch:focus{border-color:var(--pin);}
+  #tplSelect, #iconSelect, #logoSelect, #setSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px; background:var(--bg); outline:none; min-width:0;}
 
   footer{padding:8px 14px; background:var(--panel); border-top:1px solid var(--line);}
   #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:5px; min-height:12px;}
@@ -129,56 +131,17 @@
 <body>
 
 <header>
-  <img id="brandfull" src="assets/logo-full.png" alt="SlideKick" onerror="this.style.display='none'; document.getElementById('brandtext').style.display='flex';">
+  <img id="brandfull" src="assets/logo-full.png" alt="CriTick" onerror="this.style.display='none'; document.getElementById('brandtext').style.display='flex';">
   <div class="brand" id="brandtext" style="display:none;">Slide<span>Kick</span></div>
   <div class="sub" id="sub"></div>
 </header>
 
-<nav id="tabs">
-  <button id="tabbtn-notes"></button>
-  <button id="tabbtn-layout"></button>
-  <button id="tabbtn-assets"></button>
-</nav>
 
-<section id="tab-notes" class="tab">
-  <div id="mebar"></div>
-  <div class="sec" id="composerbox">
-    <input id="noteinput" type="text" dir="auto">
-    <div id="people"></div>
-    <button id="addbtn" class="btn primary"></button>
-  </div>
-  <div id="filterbar">
-    <label for="filterPerson" id="filterLabel"></label>
-    <select id="filterPerson"></select>
-    <span id="progress"></span>
-  </div>
-  <div id="notes"></div>
-  <div class="sec" id="noteactions">
-    <div class="row">
-      <button id="copyClaude" class="btn"></button>
-      <button id="labelsBtn" class="btn"></button>
-    </div>
-    <div class="row">
-      <button id="clearPins" class="btn"></button>
-    </div>
-  </div>
-</section>
 
-<section id="tab-layout" class="tab" style="display:none;">
-  <div class="sec" id="layoutbar">
-    <div class="lrow" id="catchips"></div>
-    <div class="lrow" id="imgslots" style="display:none;"></div>
-    <div class="lrow">
-      <button id="updateAllBtn" class="btn primary"></button>
-      <button id="teachBtn" class="btn"></button>
-    </div>
-  </div>
-  <div class="hint" id="layouthint"></div>
-</section>
-
-<section id="tab-assets" class="tab" style="display:none;">
+<section id="tab-assets" class="tab">
   <div class="sec">
     <div class="seclabel" id="secIcons"></div>
+    <input id="iconSearch" class="libsearch" type="text" dir="auto">
     <div class="row">
       <select id="iconSelect"></select>
       <button id="iconInsertBtn" class="btn primary"></button>
@@ -190,6 +153,7 @@
   </div>
   <div class="sec">
     <div class="seclabel" id="secLogos"></div>
+    <input id="logoSearch" class="libsearch" type="text" dir="auto">
     <div class="row">
       <select id="logoSelect"></select>
       <button id="logoInsertBtn" class="btn primary"></button>
@@ -200,7 +164,20 @@
     </div>
   </div>
   <div class="sec">
+    <div class="seclabel" id="secSets"></div>
+    <input id="setSearch" class="libsearch" type="text" dir="auto">
+    <div class="row">
+      <select id="setSelect"></select>
+      <button id="setInsertBtn" class="btn primary"></button>
+    </div>
+    <div class="row">
+      <button id="setAddBtn" class="btn"></button>
+      <button id="setRemoveBtn" class="btn"></button>
+    </div>
+  </div>
+  <div class="sec">
     <div class="seclabel" id="secTpl"></div>
+    <input id="tplSearch" class="libsearch" type="text" dir="auto">
     <div class="row">
       <select id="tplSelect"></select>
       <button id="tplInsertBtn" class="btn primary"></button>
@@ -245,25 +222,21 @@ let lastOp = 0;
 let me = '';
 let lang = 'en';
 
-const $ = id => document.getElementById(id);
+const __sink = new Proxy({style:{}, classList:{add(){},remove(){},toggle(){},contains(){return false;}}, dataset:{}, children:[],
+  appendChild(){}, addEventListener(){}, removeEventListener(){}, remove(){}, replaceWith(){}, focus(){}, select(){}, click(){},
+  setAttribute(){}, removeAttribute(){}, getContext(){return null;}, querySelector(){return null;}, querySelectorAll(){return [];},
+  scrollIntoView(){}, insertBefore(){}, cloneNode(){return __sink;}},
+  {get(tgt,p){ if(p in tgt) return tgt[p]; return ''; }, set(){return true;}});
+const $ = id => document.getElementById(id) || __sink;
 
-/* ================= tabs ================= */
-const TAB_NAMES = ['notes', 'layout', 'assets'];
-function setTab(name){
-  TAB_NAMES.forEach(n => {
-    $('tab-' + n).style.display = (n === name) ? 'flex' : 'none';
-    $('tabbtn-' + n).classList.toggle('sel', n === name);
-  });
-  if (name === 'assets') drawLibrary();
-}
-TAB_NAMES.forEach(n => $('tabbtn-' + n).addEventListener('click', () => setTab(n)));
+/* library-only build: no tabs */
 
 
 /* ================= i18n ================= */
 const STR = {
   en: {
     sub: '"I\'ve got your deck."',
-    notPpt: 'SlideKick runs inside PowerPoint',
+    notPpt: 'CriTick runs inside PowerPoint',
     anchorDefault: 'A numbered pin will be added to the slide — drag it into place',
     anchorAttached: 'Attached to: ',
     anchorPin: 'Pin selected',
@@ -288,7 +261,7 @@ const STR = {
     delTip: 'Delete note',
     editTip: 'Double-click to edit',
     clearPins: 'Remove pins from slides',
-    clearPinsTip: 'Delete all SlideKick pins from the slides (notes stay)',
+    clearPinsTip: 'Delete all CriTick pins from the slides (notes stay)',
     saved: 'Saved in this file · save the presentation to keep it',
     open: 'open',
     fixedWord: 'fixed',
@@ -352,6 +325,16 @@ const STR = {
     iconsLoadFail: 'Could not load the icon library',
     tIconFail: 'Could not insert the icon',
     secLogos: 'Logos',
+    secSets: 'Image sets',
+    libSearchPh: 'Search…',
+    libChoose: 'Choose…',
+    setAddTip: 'Pick a folder of images once (Cmd+A inside it) — saved on this computer only',
+    setAdd: '+ Add set…',
+    tSetName: 'Name this image set:',
+    tSetAdded: n => 'Set added: ' + n,
+    tSetEmpty: 'That folder had no images',
+    tSetInserted: n => n + ' images inserted on a new slide',
+    tSetNone: 'Choose a set first',
     libChoose: 'Choose…',
     libInsert: 'Insert',
     libAdd: '+ Add…',
@@ -376,9 +359,9 @@ const STR = {
     tTplNone: 'Choose a slide first',
     tSlidesInserted: 'Slides inserted',
     cleanSlate: 'Clean slate',
-    cleanTip: 'Delete everything SlideKick stored in this presentation \u2014 notes, layout, pins, labels',
+    cleanTip: 'Delete everything CriTick stored in this presentation \u2014 notes, layout, pins, labels',
     cleanConfirm: 'Press again to wipe this presentation',
-    tCleaned: 'Clean \u2014 this presentation holds no SlideKick data',
+    tCleaned: 'Clean \u2014 this presentation holds no CriTick data',
     tSlidesFail: 'Could not insert the slides'
   }
 };
@@ -400,13 +383,16 @@ function applyLang(){
   $('secIcons').textContent = t('secIcons');
   $('secTpl').textContent = t('secTpl');
   $('secLogos').textContent = t('secLogos');
+  $('secSets').textContent = t('secSets');
+  $('setInsertBtn').textContent = t('libInsert');
+  $('setAddBtn').textContent = t('setAdd'); $('setAddBtn').title = t('setAddTip');
+  $('setRemoveBtn').textContent = t('libRemove');
   $('iconInsertBtn').textContent = t('libInsert');
   $('iconAddBtn').textContent = t('libAdd'); $('iconAddBtn').title = t('libAddImgTip');
   $('iconRemoveBtn').textContent = t('libRemove');
   $('logoInsertBtn').textContent = t('libInsert');
   $('logoAddBtn').textContent = t('libAdd'); $('logoAddBtn').title = t('libAddImgTip');
   $('logoRemoveBtn').textContent = t('libRemove');
-  $('layouthint').textContent = t('layoutHint');
   $('tplInsertBtn').textContent = t('tplInsert');
   $('tplInsertBtn').title = t('tplInsertTip');
   $('tplAddBtn').textContent = t('tplAdd');
@@ -415,11 +401,6 @@ function applyLang(){
   $('tplRemoveBtn').title = t('tplRemoveTip');
   $('cleanBtn').textContent = t('cleanSlate');
   $('cleanBtn').title = t('cleanTip');
-  drawPeople();
-  drawCats();
-  drawMeBar();
-  drawNotes();
-  updateAnchor();
 }
 
 /* ================= boot ================= */
@@ -431,41 +412,8 @@ Office.onReady(info => {
     return;
   }
   ready = true;
-  try{
-    const raw = Office.context.document.settings.get(KEY);
-    if (raw) notes = JSON.parse(raw);
-  }catch(e){}
-  try{
-    const rawP = Office.context.document.settings.get(KEY_PEOPLE);
-    if (rawP) people = JSON.parse(rawP);
-  }catch(e){}
-  try{
-    const rawL = Office.context.document.settings.get(KEY_LAYOUTS);
-    if (rawL) layouts = JSON.parse(rawL);
-  }catch(e){}
-  if (layouts.image && !layouts.image1){ layouts.image1 = layouts.image; delete layouts.image; }
-  try{
-    const rawB = Office.context.document.settings.get(KEY_BINDINGS);
-    if (rawB) bindings = JSON.parse(rawB);
-  }catch(e){}
-  Object.keys(ROSTER).forEach(n => { if (!people[n]) people[n] = ROSTER[n]; });
-  let mx = 0;
-  notes.forEach(n => { if (n.pinNum > mx) mx = n.pinNum; });
-  notes.forEach(n => {
-    if (!n.pinNum) n.pinNum = ++mx;
-    if (!n.uid) n.uid = 'm' + n.ts;
-    if (!n.status) n.status = n.done ? 'fixed' : 'open';
-    if (n.status === 'canceled') n.status = 'fixed';
-    if (n.status === 'question') n.status = 'open';
-    delete n.done;
-    if (n.person === undefined) n.person = '';
-    if (n.hidden === undefined) n.hidden = false;
-    if (n.filterHidden === undefined) n.filterHidden = false;
-  });
   applyLang();
-  setTab('notes');
-  refreshSlideMap().then(async () => { drawNotes(); await applyFilterPins(); });
-  watchSelection();
+  drawLibrary();
 });
 
 /* ================= me bar ================= */
@@ -1819,9 +1767,10 @@ function assetDel(db, store, name){
 }
 
 const LIB = {
-  icon: {db: 'critick-icons', store: 'icon', sel: 'iconSelect', maxPt: 90},
-  logo: {db: 'critick-logos', store: 'logo', sel: 'logoSelect', maxPt: 200}
+  icon: {db: 'critick-icons', store: 'icon', sel: 'iconSelect', search: 'iconSearch', maxPt: 90},
+  logo: {db: 'critick-logos', store: 'logo', sel: 'logoSelect', search: 'logoSearch', maxPt: 200}
 };
+const libFilter = {icon: '', logo: '', set: '', tpl: ''};
 
 /* --- svg helpers (reused for uploaded .svg assets) --- */
 function svgToPngBase64(svgText, pw, ph){
@@ -1883,13 +1832,15 @@ function rasterDims(mime, b64){
 async function drawKindMenu(kind){
   const cfg = LIB[kind]; const sel = $(cfg.sel); if (!sel) return;
   const cur = sel.value;
+  const q = (libFilter[kind] || '').toLowerCase();
   sel.innerHTML = '';
   const o0 = document.createElement('option');
   o0.value = ''; o0.textContent = t('libChoose');
   sel.appendChild(o0);
   try{
-    const list = await assetAll(cfg.db, cfg.store);
+    let list = await assetAll(cfg.db, cfg.store);
     list.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+    if (q) list = list.filter(r => r.name.toLowerCase().indexOf(q) !== -1);
     list.forEach(r => {
       const o = document.createElement('option');
       o.value = r.name; o.textContent = r.name;
@@ -1899,10 +1850,123 @@ async function drawKindMenu(kind){
   }catch(e){}
 }
 async function drawLibrary(){
+  bindLibSearches();
   await drawKindMenu('icon');
   await drawKindMenu('logo');
+  await drawSetMenu();
   await drawTplMenu();
 }
+
+let libSearchesBound = false;
+function bindLibSearches(){
+  if (libSearchesBound) return;
+  libSearchesBound = true;
+  const wire = (inputId, kind, redraw) => {
+    const el = $(inputId);
+    if (el) el.addEventListener('input', () => { libFilter[kind] = el.value.trim(); redraw(); });
+  };
+  wire('iconSearch', 'icon', () => drawKindMenu('icon'));
+  wire('logoSearch', 'logo', () => drawKindMenu('logo'));
+  wire('setSearch', 'set', drawSetMenu);
+  wire('tplSearch', 'tpl', drawTplMenu);
+  ['iconSearch','logoSearch','setSearch','tplSearch'].forEach(id => { const e = $(id); if (e) e.placeholder = t('libSearchPh'); });
+}
+
+/* ================= image sets (folder of images -> new slide) ================= */
+function setsDB(){
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('critick-imagesets', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('set', {keyPath: 'name'});
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function setsOp(mode, fn){
+  return setsDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('set', mode);
+    const out = fn(tx.objectStore('set'));
+    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+const setsPut = rec => setsOp('readwrite', st => st.put(rec));
+const setsDel = name => setsOp('readwrite', st => st.delete(name));
+const setsAll = () => setsDB().then(db => new Promise((res, rej) => {
+  const rq = db.transaction('set').objectStore('set').getAll();
+  rq.onsuccess = () => res(rq.result || []); rq.onerror = () => rej(rq.error);
+}));
+const setsGet = name => setsDB().then(db => new Promise((res, rej) => {
+  const rq = db.transaction('set').objectStore('set').get(name);
+  rq.onsuccess = () => res(rq.result || null); rq.onerror = () => rej(rq.error);
+}));
+
+async function drawSetMenu(){
+  const sel = $('setSelect'); if (!sel) return;
+  const cur = sel.value;
+  const q = (libFilter.set || '').toLowerCase();
+  sel.innerHTML = '';
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('libChoose'); sel.appendChild(o0);
+  try{
+    let list = await setsAll();
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+    if (q) list = list.filter(r => r.name.toLowerCase().indexOf(q) !== -1);
+    list.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name; o.textContent = r.name + ' (' + (r.images ? r.images.length : 0) + ')';
+      sel.appendChild(o);
+    });
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }catch(e){}
+}
+
+let pendingSetName = null;
+$('setAddBtn').addEventListener('click', () => {
+  pickKind = 'set';
+  const p = $('assetpick');
+  p.value = '';
+  try{ p.setAttribute('webkitdirectory', ''); p.setAttribute('directory', ''); }catch(e){}
+  p.click();
+});
+
+async function ingestSet(files){
+  const imgs = files.filter(f => /image\/(png|jpe?g)/i.test(f.type) || /\.(png|jpe?g)$/i.test(f.name));
+  if (!imgs.length){ toast(t('tSetEmpty')); return; }
+  // default name from the common folder if available, else ask
+  let guess = '';
+  const wp = imgs[0].webkitRelativePath || '';
+  if (wp && wp.indexOf('/') !== -1) guess = wp.split('/')[0];
+  const name = (prompt(t('tSetName'), guess) || '').trim();
+  if (!name) return;
+  const stored = [];
+  for (const f of imgs){
+    try{
+      const a = await readAsset(f);
+      if (!a.isSvg) stored.push({b64: a.b64, mime: a.mime});
+    }catch(e){}
+  }
+  if (!stored.length){ toast(t('tSetEmpty')); return; }
+  await setsPut({name: name, images: stored, ts: Date.now()});
+  await drawSetMenu();
+  $('setSelect').value = name;
+  toast(t('tSetAdded')(name));
+}
+
+$('setRemoveBtn').addEventListener('click', async () => {
+  const name = $('setSelect').value;
+  if (!name){ toast(t('tSetNone')); return; }
+  try{ await setsDel(name); await drawSetMenu(); toast(t('tAssetRemoved')); }catch(e){}
+});
+
+$('setInsertBtn').addEventListener('click', async () => {
+  const name = $('setSelect').value;
+  if (!name){ toast(t('tSetNone')); return; }
+  try{
+    const rec = await setsGet(name);
+    if (!rec || !rec.images || !rec.images.length){ toast(t('tSetNone')); return; }
+    await insertImageSet(name, rec.images);
+    toast(t('tSetInserted')(rec.images.length));
+  }catch(e){ toast(t('tImgFail')); }
+});
 
 /* insert an icon/logo image on the current slide, aspect preserved */
 async function insertImageAsset(rec, maxPt){
@@ -1939,9 +2003,10 @@ async function insertImageAsset(rec, maxPt){
 
 /* one hidden picker, routed by the last-clicked "Add" button */
 let pickKind = 'icon';
-function libAdd(kind){ pickKind = kind; const p = $('assetpick'); p.value = ''; p.click(); }
+function libAdd(kind){ pickKind = kind; const p = $('assetpick'); try{ p.removeAttribute('webkitdirectory'); p.removeAttribute('directory'); }catch(e){} p.value = ''; p.click(); }
 $('assetpick').addEventListener('change', async e => {
   const files = [...e.target.files]; if (!files.length) return;
+  if (pickKind === 'set'){ try{ const p=$('assetpick'); p.removeAttribute('webkitdirectory'); p.removeAttribute('directory'); }catch(e){} await ingestSet(files); return; }
   const cfg = LIB[pickKind];
   let added = 0, lastName = '';
   for (const file of files){
@@ -2049,6 +2114,64 @@ async function drawTplMenu(){
     });
     if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   }catch(e){}
+}
+
+const BLANK_PPTX_B64 = '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';
+async function insertImageSet(name, images){
+  lastOp = Date.now();
+  // slide size (EMU->pt via API points already); default 13.333x7.5in = 960x540pt
+  let SW = 960, SH = 540, newSlideId = null;
+  await PowerPoint.run(async ctx => {
+    const sel = ctx.presentation.getSelectedSlides();
+    sel.load('items/id');
+    const slides = ctx.presentation.slides;
+    slides.load('items/id');
+    await ctx.sync();
+    const afterId = sel.items.length ? sel.items[0].id : (slides.items.length ? slides.items[slides.items.length-1].id : null);
+    const before = slides.items.map(x => x.id);
+    const opts = {formatting: 'UseDestinationTheme'};
+    if (afterId) opts.targetSlideId = afterId;
+    ctx.presentation.insertSlidesFromBase64(BLANK_PPTX_B64, opts);
+    await ctx.sync();
+    slides.load('items/id');
+    await ctx.sync();
+    newSlideId = slides.items.map(x => x.id).find(id => before.indexOf(id) === -1) || afterId;
+  });
+  // natural sizes
+  const dims = [];
+  for (const im of images){ dims.push(await rasterDims(im.mime, im.b64)); }
+  // layout: wrapped rows within a margin box
+  const M = 40, top0 = 96, gap = 14;
+  const boxW = SW - M*2, boxH = SH - top0 - M;
+  const n = images.length;
+  const cols = Math.min(n, Math.ceil(Math.sqrt(n * (boxW/Math.max(1,boxH)))));
+  const rows = Math.ceil(n / cols);
+  const cellW = (boxW - gap*(cols-1)) / cols;
+  const cellH = (boxH - gap*(rows-1)) / rows;
+  // headline textbox
+  await PowerPoint.run(async ctx => {
+    const sl = ctx.presentation.slides.getItem(newSlideId);
+    const tb = sl.shapes.addTextBox(name + ' images', {left: M, top: 30, width: boxW, height: 44});
+    try{
+      const tr = tb.textFrame.textRange;
+      tr.font.name = 'Arial'; tr.font.size = 24; tr.font.bold = true; tr.font.color = '#1C1B1A';
+    }catch(e){}
+    await ctx.sync();
+  });
+  // place images, aspect-fit into each cell
+  for (let i = 0; i < n; i++){
+    const r = Math.floor(i / cols), c = i % cols;
+    const d = dims[i]; const ar = (d.w>0 && d.h>0) ? d.w/d.h : 1;
+    let w = cellW, h = w/ar;
+    if (h > cellH){ h = cellH; w = h*ar; }
+    const cx = M + c*(cellW+gap) + cellW/2, cy = top0 + r*(cellH+gap) + cellH/2;
+    const left = Math.round(cx - w/2), top = Math.round(cy - h/2);
+    await new Promise(res => {
+      Office.context.document.setSelectedDataAsync(images[i].b64,
+        {coercionType: Office.CoercionType.Image, imageLeft: left, imageTop: top, imageWidth: Math.round(w), imageHeight: Math.round(h)},
+        rr => res(rr.status === Office.AsyncResultStatus.Succeeded));
+    });
+  }
 }
 
 async function insertTemplateB64(b64){
