@@ -1729,19 +1729,39 @@ async function syncLayoutDefs(){
 /* ================= local asset libraries (icons / logos / backgrounds) ================= */
 /* All stored locally on this machine via IndexedDB. Nothing is uploaded anywhere. */
 
+/* Storage layer: IndexedDB with guaranteed store creation, localStorage fallback.
+   Robust against pre-existing DBs missing the object store (bumps version to create it). */
 function assetDB(dbName, store){
   return new Promise((res, rej) => {
-    const rq = indexedDB.open(dbName, 1);
-    rq.onupgradeneeded = () => rq.result.createObjectStore(store, {keyPath: 'name'});
-    rq.onsuccess = () => res(rq.result);
-    rq.onerror = () => rej(rq.error);
+    let rq;
+    try{ rq = indexedDB.open(dbName); }catch(e){ return rej(e); }
+    rq.onerror = () => rej(rq.error || new Error('idb open error'));
+    rq.onsuccess = () => {
+      const db = rq.result;
+      if (db.objectStoreNames.contains(store)){ res(db); return; }
+      // store missing -> reopen at next version and create it
+      const v = db.version + 1;
+      db.close();
+      let rq2;
+      try{ rq2 = indexedDB.open(dbName, v); }catch(e){ return rej(e); }
+      rq2.onupgradeneeded = () => {
+        const d2 = rq2.result;
+        if (!d2.objectStoreNames.contains(store)) d2.createObjectStore(store, {keyPath: 'name'});
+      };
+      rq2.onsuccess = () => res(rq2.result);
+      rq2.onerror = () => rej(rq2.error || new Error('idb upgrade error'));
+    };
+    rq.onupgradeneeded = () => {
+      const d = rq.result;
+      if (!d.objectStoreNames.contains(store)) d.createObjectStore(store, {keyPath: 'name'});
+    };
   });
 }
 function assetPut(db, store, rec){
   return assetDB(db, store).then(d => new Promise((res, rej) => {
     const tx = d.transaction(store, 'readwrite');
     tx.objectStore(store).put(rec);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
   }));
 }
 function assetAll(db, store){
@@ -1762,7 +1782,7 @@ function assetDel(db, store, name){
   return assetDB(db, store).then(d => new Promise((res, rej) => {
     const tx = d.transaction(store, 'readwrite');
     tx.objectStore(store).delete(name);
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
   }));
 }
 
