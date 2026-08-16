@@ -130,6 +130,7 @@
 </head>
 <body>
 
+<div id="errbar" style="display:none;background:#C0392B;color:#fff;padding:10px;font:12px/1.4 monospace;white-space:pre-wrap;word-break:break-word;"></div>
 <header>
   <img id="brandfull" src="assets/logo-full.png" alt="CriTick" onerror="this.style.display='none'; document.getElementById('brandtext').style.display='flex';">
   <div class="brand" id="brandtext" style="display:none;">Slide<span>Kick</span></div>
@@ -202,6 +203,18 @@
 <div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
+<script>
+window.addEventListener('error', function(e){
+  var b=document.getElementById('errbar'); if(!b)return;
+  b.style.display='block';
+  b.textContent='ERROR: '+(e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+(e.lineno||'')+':'+(e.colno||'');
+});
+window.addEventListener('unhandledrejection', function(e){
+  var b=document.getElementById('errbar'); if(!b)return;
+  b.style.display='block';
+  var r=e.reason; b.textContent='PROMISE ERROR: '+((r&&r.message)||r||'unknown');
+});
+</script>
 
 <script>
 const KEY = 'critick-notes';
@@ -1946,8 +1959,9 @@ async function ingestSet(files){
   }
   await drawSetMenu();
   const sel = $('setSelect'); if (sel) sel.value = name;
-  if (ok) toast(t('tSetAdded')(name));
-  else toast('set add failed: ' + (lastErr || 'no images'));
+  var b=document.getElementById('errbar');
+  if (ok){ toast(t('tSetAdded')(name)); if(b){b.style.display='block';b.style.background='#1E7E34';b.textContent='OK: saved '+ok+' images to set "'+name+'"';} }
+  else { if(b){b.style.display='block';b.textContent='SET ADD FAILED: '+(lastErr||'no valid images found in selection');} }
 }
 
 $('setRemoveBtn').addEventListener('click', async () => {
