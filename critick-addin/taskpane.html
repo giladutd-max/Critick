@@ -171,9 +171,14 @@
       <select id="setSelect"></select>
       <button id="setInsertBtn" class="btn primary"></button>
     </div>
+    <input id="setNameInput" class="libsearch" type="text" dir="auto" style="display:none;">
     <div class="row">
       <button id="setAddBtn" class="btn"></button>
       <button id="setRemoveBtn" class="btn"></button>
+    </div>
+    <div class="row" id="setNameRow" style="display:none;">
+      <input id="setNameField" type="text" dir="auto" placeholder="Name this set…" style="flex:2;font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:12px;padding:6px;background:var(--bg);outline:none;min-width:0;">
+      <button id="setNameSave" class="btn primary" style="flex:1;">Save set</button>
     </div>
   </div>
   <div class="sec">
@@ -1941,28 +1946,42 @@ async function drawSetMenu(){
   }catch(e){}
 }
 
+let pendingSetFiles = [];
 $('setAddBtn').addEventListener('click', () => { pickKind = 'set'; const p = $('assetpick'); p.value = ''; p.click(); });
 
+// called from the shared picker when pickKind==='set': stash images, reveal the name row
 async function ingestSet(files){
   const imgs = files.filter(f => /image\/(png|jpe?g)/i.test(f.type) || /\.(png|jpe?g)$/i.test(f.name));
   if (!imgs.length){ toast(t('tSetEmpty')); return; }
-  const name = (prompt(t('tSetName'), '') || '').trim();
-  if (!name) return;
-  let idx = 0, ok = 0, lastErr = '';
-  for (const f of imgs){
+  pendingSetFiles = imgs;
+  $('setNameRow').style.display = 'flex';
+  $('setNameField').value = '';
+  $('setNameField').focus();
+  toast(imgs.length + ' images selected — name the set');
+}
+
+async function saveSetFromName(){
+  const name = ($('setNameField').value || '').trim();
+  if (!name){ $('setNameField').focus(); return; }
+  if (!pendingSetFiles.length){ $('setNameRow').style.display = 'none'; return; }
+  let idx = 0, ok = 0;
+  for (const f of pendingSetFiles){
     try{
       const a = await readAsset(f);
       if (a.isSvg) continue;
       await assetPut(SETS_DB, SETS_STORE, {name: name + '||' + idx, set: name, idx: idx, b64: a.b64, mime: a.mime});
       idx++; ok++;
-    }catch(e){ lastErr = (e && e.message) || String(e); }
+    }catch(e){}
   }
+  pendingSetFiles = [];
+  $('setNameRow').style.display = 'none';
   await drawSetMenu();
   const sel = $('setSelect'); if (sel) sel.value = name;
-  var b=document.getElementById('errbar');
-  if (ok){ toast(t('tSetAdded')(name)); if(b){b.style.display='block';b.style.background='#1E7E34';b.textContent='OK: saved '+ok+' images to set "'+name+'"';} }
-  else { if(b){b.style.display='block';b.textContent='SET ADD FAILED: '+(lastErr||'no valid images found in selection');} }
+  if (ok) toast(t('tSetAdded')(name));
+  else toast(t('tSetEmpty'));
 }
+$('setNameSave').addEventListener('click', saveSetFromName);
+$('setNameField').addEventListener('keydown', e => { if (e.key === 'Enter') saveSetFromName(); });
 
 $('setRemoveBtn').addEventListener('click', async () => {
   const name = $('setSelect').value;
