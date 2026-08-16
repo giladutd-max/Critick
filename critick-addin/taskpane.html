@@ -1920,13 +1920,7 @@ async function drawSetMenu(){
 }
 
 let pendingSetName = null;
-$('setAddBtn').addEventListener('click', () => {
-  pickKind = 'set';
-  const p = $('assetpick');
-  p.value = '';
-  try{ p.setAttribute('webkitdirectory', ''); p.setAttribute('directory', ''); }catch(e){}
-  p.click();
-});
+$('setAddBtn').addEventListener('click', () => { pickKind = 'set'; const p = $('assetpick'); p.value = ''; p.click(); });
 
 async function ingestSet(files){
   const imgs = files.filter(f => /image\/(png|jpe?g)/i.test(f.type) || /\.(png|jpe?g)$/i.test(f.name));
@@ -2003,10 +1997,10 @@ async function insertImageAsset(rec, maxPt){
 
 /* one hidden picker, routed by the last-clicked "Add" button */
 let pickKind = 'icon';
-function libAdd(kind){ pickKind = kind; const p = $('assetpick'); try{ p.removeAttribute('webkitdirectory'); p.removeAttribute('directory'); }catch(e){} p.value = ''; p.click(); }
+function libAdd(kind){ pickKind = kind; const p = $('assetpick'); p.value = ''; p.click(); }
 $('assetpick').addEventListener('change', async e => {
   const files = [...e.target.files]; if (!files.length) return;
-  if (pickKind === 'set'){ try{ const p=$('assetpick'); p.removeAttribute('webkitdirectory'); p.removeAttribute('directory'); }catch(e){} await ingestSet(files); return; }
+  if (pickKind === 'set'){ await ingestSet(files); return; }
   const cfg = LIB[pickKind];
   let added = 0, lastName = '';
   for (const file of files){
