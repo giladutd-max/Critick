@@ -2000,26 +2000,30 @@ let pickKind = 'icon';
 function libAdd(kind){ pickKind = kind; const p = $('assetpick'); p.value = ''; p.click(); }
 $('assetpick').addEventListener('change', async e => {
   const files = [...e.target.files];
-  toast('picker: ' + files.length + ' file(s)');
   if (!files.length) return;
   if (pickKind === 'set'){ await ingestSet(files); return; }
   const cfg = LIB[pickKind];
-  let added = 0, lastName = '', lastErr = '';
+  let added = 0, lastName = '', lastErr = '', stage = 'start';
   for (const file of files){
     try{
+      stage = 'read';
       const a = await readAsset(file);
       const name = file.name.replace(/\.[^.]+$/, '');
       const rec = {name: name, ts: Date.now(), isSvg: !!a.isSvg};
       if (a.isSvg) rec.text = a.text; else { rec.b64 = a.b64; rec.mime = a.mime; }
+      stage = 'store';
       await assetPut(cfg.db, cfg.store, rec);
+      stage = 'verify';
+      const back = await assetGet(cfg.db, cfg.store, name);
+      if (!back) throw new Error('stored but not found on read-back');
       added++; lastName = name;
-    }catch(err){ lastErr = (err && err.message) || String(err); }
+    }catch(err){ lastErr = 'at ' + stage + ': ' + ((err && err.message) || String(err)); }
   }
   await drawKindMenu(pickKind);
   const sel = $(cfg.sel);
   if (added === 1){ sel.value = lastName; toast(t('tAssetAdded')(lastName)); }
   else if (added > 1) toast(t('tAssetAddedMany')(added));
-  else toast('add failed: ' + (lastErr || 'unknown'));
+  else toast('FAIL ' + lastErr);
 });
 
 /* icons */
