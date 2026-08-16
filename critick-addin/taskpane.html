@@ -196,9 +196,9 @@
   <div id="savedflag"></div>
 </footer>
 
-<input type="file" id="imgpick" accept="image/png,image/jpeg" style="display:none;">
-<input type="file" id="slidepick" accept=".pptx" multiple style="display:none;">
-<input type="file" id="assetpick" accept="image/png,image/jpeg,image/svg+xml,.svg,.png,.jpg,.jpeg" multiple style="display:none;">
+<input type="file" id="imgpick" accept="image/png,image/jpeg" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
+<input type="file" id="slidepick" accept=".pptx" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
+<input type="file" id="assetpick" accept="image/*,.svg,.png,.jpg,.jpeg" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
 <div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
@@ -1999,10 +1999,12 @@ async function insertImageAsset(rec, maxPt){
 let pickKind = 'icon';
 function libAdd(kind){ pickKind = kind; const p = $('assetpick'); p.value = ''; p.click(); }
 $('assetpick').addEventListener('change', async e => {
-  const files = [...e.target.files]; if (!files.length) return;
+  const files = [...e.target.files];
+  toast('picker: ' + files.length + ' file(s)');
+  if (!files.length) return;
   if (pickKind === 'set'){ await ingestSet(files); return; }
   const cfg = LIB[pickKind];
-  let added = 0, lastName = '';
+  let added = 0, lastName = '', lastErr = '';
   for (const file of files){
     try{
       const a = await readAsset(file);
@@ -2011,13 +2013,13 @@ $('assetpick').addEventListener('change', async e => {
       if (a.isSvg) rec.text = a.text; else { rec.b64 = a.b64; rec.mime = a.mime; }
       await assetPut(cfg.db, cfg.store, rec);
       added++; lastName = name;
-    }catch(err){}
+    }catch(err){ lastErr = (err && err.message) || String(err); }
   }
   await drawKindMenu(pickKind);
   const sel = $(cfg.sel);
   if (added === 1){ sel.value = lastName; toast(t('tAssetAdded')(lastName)); }
   else if (added > 1) toast(t('tAssetAddedMany')(added));
-  else toast(t('tAssetFail'));
+  else toast('add failed: ' + (lastErr || 'unknown'));
 });
 
 /* icons */
