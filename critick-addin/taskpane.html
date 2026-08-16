@@ -2174,6 +2174,9 @@ async function insertImageSet(name, images){
     slides.load('items/id');
     await ctx.sync();
     newSlideId = slides.items.map(x => x.id).find(id => before.indexOf(id) === -1) || afterId;
+    // select the NEW slide so setSelectedDataAsync drops images onto IT, not the old one
+    try{ ctx.presentation.setSelectedSlides([newSlideId]); }catch(e){}
+    await ctx.sync();
   });
   // natural sizes
   const dims = [];
@@ -2194,8 +2197,11 @@ async function insertImageSet(name, images){
       const tr = tb.textFrame.textRange;
       tr.font.name = 'Arial'; tr.font.size = 24; tr.font.bold = true; tr.font.color = '#1C1B1A';
     }catch(e){}
+    try{ ctx.presentation.setSelectedSlides([newSlideId]); }catch(e){}
     await ctx.sync();
   });
+  // ensure the new slide is the active one before dropping images
+  try{ await PowerPoint.run(async ctx => { ctx.presentation.setSelectedSlides([newSlideId]); await ctx.sync(); }); }catch(e){}
   // place images, aspect-fit into each cell
   for (let i = 0; i < n; i++){
     const r = Math.floor(i / cols), c = i % cols;
