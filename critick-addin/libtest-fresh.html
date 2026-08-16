@@ -1,0 +1,2517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- BUILD-0816-1105 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CriTick BUILD-0816-1105</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAF9F6; --panel:#FFFFFF; --ink:#1C1B1A; --muted:#8A867E; --line:#E7E4DD;
+    --pin:#7867B9; --pin-soft:#EFECF9; --done:#2E7D5B; --done-soft:#E4F0EA;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{font-family:'Heebo',system-ui,sans-serif; background:var(--bg); color:var(--ink); font-size:13px; display:flex; flex-direction:column;}
+
+  header{padding:12px 14px 8px; background:var(--panel);}
+  header{text-align:center;}
+  #brandfull{height:96px; width:auto; display:block; margin:0 auto;}
+  header .brand{font-family:'Baloo 2','Heebo',sans-serif; font-weight:800; font-size:17px; display:flex; align-items:center; justify-content:center; gap:7px;}
+  header .sub{text-align:center;}
+  header .brand span{color:var(--pin);}
+  header .sub{font-size:11px; color:var(--muted); margin-top:1px;}
+
+  #tabs{display:flex; background:var(--panel); border-bottom:1px solid var(--line); padding:0 8px;}
+  #tabs button{flex:1; font-family:'Baloo 2','Heebo',sans-serif; font-size:13px; font-weight:600; background:none; border:none; border-bottom:2px solid transparent; padding:8px 4px; cursor:pointer; color:var(--muted);}
+  #tabs button.sel{color:var(--ink); border-bottom-color:var(--pin);}
+  #tabs button:hover{color:var(--ink);}
+
+  .tab{flex:1; display:flex; flex-direction:column; min-height:0; overflow-y:auto;}
+  .sec{padding:10px 14px; background:var(--panel);}
+  .sec + .sec{border-top:1px solid var(--line);}
+  .seclabel{font-family:'Baloo 2','Heebo',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:8px;}
+
+  .btn{font-family:'Baloo 2','Heebo',sans-serif; font-size:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:7px 10px; cursor:pointer; color:var(--ink);}
+  .btn:hover{border-color:#C9C5BC;}
+  .btn.primary{background:var(--pin); color:#fff; border-color:var(--pin);}
+  .btn.primary:hover{background:#6656A8;}
+  .btn.arm{background:var(--pin); color:#fff; border-color:var(--pin);}
+  .btn:disabled{opacity:.5; cursor:default;}
+  .row{display:flex; gap:6px;}
+  .row + .row{margin-top:6px;}
+  .row .btn{flex:1;}
+
+  #mebar{display:none; align-items:center; gap:6px; padding:7px 14px; background:var(--panel); border-bottom:1px solid var(--line); font-size:12px; flex-wrap:wrap;}
+  #mebar.on{display:flex;}
+  #mebar .pdot{width:8px; height:8px; border-radius:50%; display:inline-block; flex:none;}
+  #mebar .mine-btn{font-family:inherit; font-size:11px; font-weight:500; border:1px solid var(--pin); color:var(--pin); background:var(--panel); border-radius:8px; padding:2px 8px; cursor:pointer;}
+  #mebar .mine-btn:hover{background:var(--pin); color:#fff;}
+  #mebar .who-chip{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:2px 9px; cursor:pointer; background:var(--panel);}
+  #mebar .who-chip:hover{border-color:var(--pin);}
+
+  #anchor{font-size:11px; color:var(--muted); margin-bottom:6px; min-height:14px;}
+  #anchor b{color:var(--pin); font-weight:500;}
+  #noteinput{width:100%; font-family:inherit; font-size:13px; border:1px solid var(--line); border-radius:12px; padding:8px 10px; outline:none; background:var(--bg);}
+  #noteinput:focus{border-color:var(--pin);}
+  #people{display:flex; flex-wrap:wrap; gap:4px; padding:8px 0 2px;}
+  .chip{flex:none; display:flex; align-items:center; gap:4px; font-size:11px; border:1px solid var(--line); border-radius:11px; padding:2px 8px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
+  .chip .dot{width:8px; height:8px; border-radius:50%; flex:none;}
+  .chip.sel{border-color:var(--ink); background:var(--bg); font-weight:500;}
+  #newperson{width:76px; font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:11px; padding:2px 8px; outline:none; display:none;}
+  #addbtn{width:100%; margin-top:8px;}
+
+  #filterbar{display:flex; align-items:center; gap:8px; padding:8px 14px; background:var(--panel); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  #filterbar label{font-size:11px; color:var(--muted);}
+  #filterPerson{flex:1; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:4px 6px; background:var(--bg); outline:none; min-width:0;}
+  #progress{font-size:11px; color:var(--muted); white-space:nowrap;}
+  #progress b{color:var(--done); font-weight:500;}
+
+  #notes{flex:1; min-height:80px; overflow-y:auto; background:var(--bg);}
+  .slidehead{font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:10px 14px 3px; cursor:pointer;}
+  .slidehead:hover{color:var(--pin);}
+  .empty{padding:14px; color:var(--muted); font-size:12px; line-height:1.5; text-align:center;}
+  .note{display:flex; gap:8px; padding:8px 14px; align-items:flex-start; cursor:pointer; background:var(--panel); border-bottom:1px solid var(--line);}
+  .note:hover{background:var(--pin-soft);}
+  .note.hl{background:var(--pin-soft); box-shadow:inset 3px 0 0 var(--pin);}
+  .note .num{flex:none; width:20px; height:20px; border-radius:50%; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-top:1px;}
+  .note .body{flex:1; min-width:0;}
+  .note .txt{font-size:13px; line-height:1.4; word-wrap:break-word; unicode-bidi:plaintext;}
+  .note.st-fixed .txt{color:var(--muted); text-decoration:line-through;}
+  .txt-edit{width:100%; font-family:inherit; font-size:13px; border:1px solid var(--pin); border-radius:6px; padding:3px 6px; outline:none;}
+  .note .meta{font-size:10px; color:var(--muted); margin-top:2px; display:flex; align-items:center; gap:4px; flex-wrap:wrap;}
+  .note .meta .pdot{width:7px; height:7px; border-radius:50%; display:inline-block;}
+  .note .meta .assign{cursor:pointer; display:inline-flex; align-items:center; gap:4px;}
+  .note .meta .assign:hover{color:var(--ink); text-decoration:underline;}
+  .assign-sel{font-family:inherit; font-size:11px; border:1px solid var(--line); border-radius:6px; background:var(--panel);}
+  .note .st{font-weight:500;}
+  .note .st.fixed{color:var(--done);}
+  .note .tag{display:inline-block; font-size:10px; color:var(--muted); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:0 5px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .note .acts{flex:none; display:flex;}
+  .note .acts button{border:none; background:none; padding:2px 3px; font-size:13px; color:var(--muted); cursor:pointer; font-family:inherit; line-height:1;}
+  .note .acts button:hover{color:var(--ink);}
+  .note .acts .eye.off{opacity:.35;}
+  .note .acts .st-btn:hover{color:var(--done);}
+  .note .acts .del:hover{color:var(--pin);}
+
+  .cat-chip{flex:none; display:flex; align-items:center; gap:5px; font-size:11px; border:1px solid var(--line); border-radius:12px; padding:4px 9px; cursor:pointer; background:var(--panel); font-family:inherit; color:var(--ink);}
+  .cat-chip .sq{width:12px; height:12px; border-radius:3px; color:#fff; font-size:8px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none;}
+  .cat-chip:hover{border-color:#C9C5BC;}
+  .cat-chip .has{color:var(--done); font-weight:700; margin-inline-start:1px;}
+  .lrow{display:flex; gap:6px; flex-wrap:wrap;}
+  .lrow + .lrow{margin-top:8px;}
+  .hint{font-size:11px; color:var(--muted); line-height:1.5; padding:10px 14px;}
+
+  #icongrid{display:flex; flex-direction:column; gap:2px; max-height:340px; overflow-y:auto;}
+  #icongrid button{display:flex; align-items:center; gap:8px; border:none; border-radius:8px; background:none; padding:5px 8px; cursor:pointer; font-family:inherit; font-size:12px; color:var(--ink); text-align:start; width:100%;}
+  #icongrid button:hover{background:var(--pin-soft);}
+  #iconfilter{width:100%; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px 10px; outline:none; background:var(--bg); margin-bottom:6px;}
+  #iconfilter:focus{border-color:var(--pin);}
+  #icongrid .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; unicode-bidi:plaintext;}
+  #icongrid .iconmsg{font-size:11px; color:var(--muted); text-align:center; padding:6px;}
+   .libsearch{width:100%; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px 10px; background:var(--bg); outline:none; margin-bottom:6px;}
+  .libsearch:focus{border-color:var(--pin);}
+  #tplSelect, #iconSelect, #logoSelect, #setSelect{flex:2; font-family:inherit; font-size:12px; border:1px solid var(--line); border-radius:12px; padding:6px; background:var(--bg); outline:none; min-width:0;}
+
+  footer{padding:8px 14px; background:var(--panel); border-top:1px solid var(--line);}
+  #savedflag{font-size:10px; color:var(--muted); text-align:center; margin-top:5px; min-height:12px;}
+
+  #claudebox{display:none; position:fixed; inset:0; background:rgba(28,27,26,.45); z-index:50; padding:20px 14px;}
+  #claudebox.on{display:flex; flex-direction:column; gap:8px;}
+  #claudebox .inner{background:var(--panel); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; flex:1; min-height:0;}
+  #claudebox textarea{flex:1; min-height:0; width:100%; font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.5; border:1px solid var(--line); border-radius:8px; padding:8px; resize:none; outline:none; background:var(--bg);}
+  #claudebox .hint{font-size:11px; color:var(--muted); text-align:center; padding:0;}
+
+  #toast{position:fixed; bottom:56px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; font-size:12px; padding:6px 14px; border-radius:8px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:99; white-space:nowrap; max-width:92%; overflow:hidden; text-overflow:ellipsis;}
+  #toast.on{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <img id="brandfull" src="assets/logo-full.png" alt="CriTick" onerror="this.style.display='none'; document.getElementById('brandtext').style.display='flex';">
+  <div class="brand" id="brandtext" style="display:none;">Slide<span>Kick</span></div>
+  <div class="sub" id="sub"></div>
+</header>
+
+
+
+<section id="tab-assets" class="tab">
+  <div class="sec">
+    <div class="seclabel" id="secIcons"></div>
+    <input id="iconSearch" class="libsearch" type="text" dir="auto">
+    <div class="row">
+      <select id="iconSelect"></select>
+      <button id="iconInsertBtn" class="btn primary"></button>
+    </div>
+    <div class="row">
+      <button id="iconAddBtn" class="btn"></button>
+      <button id="iconRemoveBtn" class="btn"></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="seclabel" id="secLogos"></div>
+    <input id="logoSearch" class="libsearch" type="text" dir="auto">
+    <div class="row">
+      <select id="logoSelect"></select>
+      <button id="logoInsertBtn" class="btn primary"></button>
+    </div>
+    <div class="row">
+      <button id="logoAddBtn" class="btn"></button>
+      <button id="logoRemoveBtn" class="btn"></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="seclabel" id="secSets"></div>
+    <input id="setSearch" class="libsearch" type="text" dir="auto">
+    <div class="row">
+      <select id="setSelect"></select>
+      <button id="setInsertBtn" class="btn primary"></button>
+    </div>
+    <div class="row">
+      <button id="setAddBtn" class="btn"></button>
+      <button id="setRemoveBtn" class="btn"></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="seclabel" id="secTpl"></div>
+    <input id="tplSearch" class="libsearch" type="text" dir="auto">
+    <div class="row">
+      <select id="tplSelect"></select>
+      <button id="tplInsertBtn" class="btn primary"></button>
+    </div>
+    <div class="row">
+      <button id="tplAddBtn" class="btn"></button>
+      <button id="tplRemoveBtn" class="btn"></button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="row">
+    <button id="cleanBtn" class="btn"></button>
+  </div>
+  <div id="savedflag"></div>
+</footer>
+
+<input type="file" id="imgpick" accept="image/png,image/jpeg" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
+<input type="file" id="slidepick" accept=".pptx" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
+<input type="file" id="assetpick" accept="image/*,.svg,.png,.jpg,.jpeg" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;">
+<div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
+
+<div id="toast"></div>
+
+<script>
+const KEY = 'critick-notes';
+const KEY_PEOPLE = 'critick-people';
+const PIN = '#A83254', SELF = '#7867B9';
+const ROSTER = {
+  'Gilad':'#A83254','Noa':'#2563EB','Issi':'#0E9F6E','Merav':'#D97706','Daniel':'#7C3AED',
+  'Maya':'#DB2777','Adi':'#0891B2','Tsofit':'#65A30D','Michal':'#92400E'
+};
+let notes = [];
+let people = {};
+let slidePos = {};
+let ready = false;
+let selPerson = '';
+let filterP = '';
+let undoStack = [];
+let lastOp = 0;
+let me = '';
+let lang = 'en';
+
+const __sink = new Proxy({style:{}, classList:{add(){},remove(){},toggle(){},contains(){return false;}}, dataset:{}, children:[],
+  appendChild(){}, addEventListener(){}, removeEventListener(){}, remove(){}, replaceWith(){}, focus(){}, select(){}, click(){},
+  setAttribute(){}, removeAttribute(){}, getContext(){return null;}, querySelector(){return null;}, querySelectorAll(){return [];},
+  scrollIntoView(){}, insertBefore(){}, cloneNode(){return __sink;}},
+  {get(tgt,p){ if(p in tgt) return tgt[p]; return ''; }, set(){return true;}});
+const $ = id => document.getElementById(id) || __sink;
+
+/* library-only build: no tabs */
+
+
+/* ================= i18n ================= */
+const STR = {
+  en: {
+    sub: '"I\'ve got your deck."',
+    notPpt: 'CriTick runs inside PowerPoint',
+    anchorDefault: 'A numbered pin will be added to the slide — drag it into place',
+    anchorAttached: 'Attached to: ',
+    anchorPin: 'Pin selected',
+    placeholder: 'Write the correction… (Enter to add)',
+    addSlide: 'Add to this slide',
+    addObject: 'Add note on this object',
+    myself: 'Myself',
+    addPerson: 'Add a person',
+    personName: 'Name',
+    filterLabel: 'Show',
+    everyone: 'Everyone',
+    emptyNew: 'No corrections yet.',
+    emptyFilter: 'No notes for this filter.',
+    slideWord: 'Slide',
+    slideMeta: 'slide',
+    deletedSlide: 'Deleted slide',
+    fixedLabel: '👍 fixed',
+    reassignTip: 'Click to reassign',
+    eyeTip: 'Hide/show the pin on the slide',
+    fixTip: 'Mark fixed — the pin leaves the slide',
+    reopenTip: 'Reopen — the pin returns',
+    delTip: 'Delete note',
+    editTip: 'Double-click to edit',
+    clearPins: 'Remove pins from slides',
+    clearPinsTip: 'Delete all CriTick pins from the slides (notes stay)',
+    saved: 'Saved in this file · save the presentation to keep it',
+    open: 'open',
+    fixedWord: 'fixed',
+    forYou: n => n + ' open ' + (n === 1 ? 'note' : 'notes') + ' for you',
+    nothingForYou: 'nothing open for you',
+    showMine: 'Show mine',
+    change: 'change',
+    whoami: 'Who are you?',
+    goSlide: 'Go to slide',
+    tClickSlide: 'Click a slide first',
+    tCouldNotAdd: 'Could not add the note — try again',
+    tNoPins: 'No pins on the slides',
+    tPinsRemoved: n => n + ' pins removed — notes kept',
+    tCantRemove: 'Could not remove pins',
+    tGoneOne: 'Note deleted with its pin',
+    tGoneMany: n => n + ' notes deleted with their pins',
+    tUndone: 'Undone',
+    tNothingUndo: 'Nothing to undo',
+    tCantUndo: 'Could not undo',
+    copyClaude: 'Copy for Claude',
+    copyClaudeTip: 'Copy all open corrections as instructions to paste into the Claude pane',
+    tNothingOpen: 'No open corrections',
+    tClaudeCopied: 'Copied — paste into the Claude pane',
+    copyHint: 'Press ⌘C to copy, then paste into the Claude pane · Esc to close',
+    imgTip: 'Place an image at this pin',
+    tImgPlaced: 'Image placed at the pin — adjust and 👍 when done',
+    tImgFail: 'Could not place the image',
+    labelsShow: 'Show notes on slides',
+    labelsHide: 'Hide notes from slides',
+    labelsTip: 'Write each note as a small text box next to its pin (remove before sending the deck)',
+    tCantLabels: 'Could not update the notes on the slides',
+    saveLayout: 'Save layout',
+    saveLayoutTip: 'Drop category pins on correctly placed elements, then press to learn their position, size and font',
+    arrange: 'Arrange',
+    arrangeTip: 'Drop category pins on messy elements, then press to snap them to the saved layout',
+    teach: 'Reset layout',
+    teachTip: 'Clear this presentation\u2019s saved layout so the categories can be taught again',
+    tReset: 'Layout cleared \u2014 select each correct element and click its category to teach it',
+    tTaught: c => c + ' \u2713 saved',
+    tSnapped: c => 'Snapped to ' + c + ' layout',
+    tImgSlotSaved: n => 'Image ' + n + ' \u2713 saved',
+    tImgSnapped: n => 'Snapped to Image ' + n,
+    tGhostsOn: 'Layout preview shown \u2014 click a category with nothing selected to hide it',
+    tGhostsOff: 'Layout preview hidden',
+    tNoLayout: 'Nothing taught yet',
+    tSelectFirst: 'Select an element on the slide first',
+    updateAll: 'Re-arrange all',
+    updateAllTip: 'Snap every element that was ever arranged back to the layout\u2019s current positions',
+    tUpdated: n => n + ' element' + (n === 1 ? '' : 's') + ' re-arranged',
+    tNothingBound: 'No elements matching the previous layout were found',
+    tLayoutFail: 'Could not apply the layout',
+    tabNotes: 'Notes',
+    tabLayout: 'Layout',
+    tabAssets: 'Library',
+    secIcons: 'Icons',
+    secTpl: 'Slides',
+    layoutHint: 'Tip: click a category with nothing selected to show or hide the layout frames on this slide.',
+    iconsEmpty: 'No icons yet — upload .svg files to critick-addin/icons on GitHub',
+    iconFilterPh: 'Filter…',
+    iconsNoMatch: 'No icons match',
+    iconsLoadFail: 'Could not load the icon library',
+    tIconFail: 'Could not insert the icon',
+    secLogos: 'Logos',
+    secSets: 'Image sets',
+    libSearchPh: 'Search…',
+    libChoose: 'Choose…',
+    setAddTip: 'Pick a folder of images once (Cmd+A inside it) — saved on this computer only',
+    setAdd: '+ Add set…',
+    tSetName: 'Name this image set:',
+    tSetAdded: n => 'Set added: ' + n,
+    tSetEmpty: 'That folder had no images',
+    tSetInserted: n => n + ' images inserted on a new slide',
+    tSetNone: 'Choose a set first',
+    libChoose: 'Choose…',
+    libInsert: 'Insert',
+    libAdd: '+ Add…',
+    libRemove: 'Remove',
+    libAddImgTip: 'Pick image or SVG files once — saved on this computer only, never uploaded',
+    tAssetAdded: n => 'Added: ' + n,
+    tAssetAddedMany: n => n + ' added',
+    tAssetRemoved: 'Removed',
+    tAssetNone: 'Choose one first',
+    tAssetFail: 'Could not add — use PNG, JPG or SVG',
+    tImgFail: 'Could not insert the image',
+    tplChoose: 'Choose a slide…',
+    tplInsert: 'Insert',
+    tplInsertTip: 'Insert after the current slide, fully editable',
+    tplAdd: '+ Add slide…',
+    tplAddTip: 'Pick a .pptx once — it becomes a menu item on this computer (the file never leaves your machine)',
+    tplRemove: 'Remove',
+    tplRemoveTip: 'Remove the selected slide from the menu',
+    tTplAdded: n => 'Slide added: ' + n,
+    tTplAddedMany: n => n + ' slides added',
+    tTplRemoved: 'Slide removed',
+    tTplNone: 'Choose a slide first',
+    tSlidesInserted: 'Slides inserted',
+    cleanSlate: 'Clean slate',
+    cleanTip: 'Delete everything CriTick stored in this presentation \u2014 notes, layout, pins, labels',
+    cleanConfirm: 'Press again to wipe this presentation',
+    tCleaned: 'Clean \u2014 this presentation holds no CriTick data',
+    tSlidesFail: 'Could not insert the slides'
+  }
+};
+function t(key){ return STR[lang][key]; }
+
+function applyLang(){
+  $('sub').textContent = t('sub');
+  $('noteinput').placeholder = t('placeholder');
+  $('filterLabel').textContent = t('filterLabel');
+  $('clearPins').textContent = t('clearPins');
+  $('clearPins').title = t('clearPinsTip');
+  $('copyClaude').textContent = t('copyClaude');
+  $('copyClaude').title = t('copyClaudeTip');
+  $('labelsBtn').textContent = labelsOn ? t('labelsHide') : t('labelsShow');
+  $('labelsBtn').title = t('labelsTip');
+  $('tabbtn-notes').textContent = t('tabNotes');
+  $('tabbtn-layout').textContent = t('tabLayout');
+  $('tabbtn-assets').textContent = t('tabAssets');
+  $('secIcons').textContent = t('secIcons');
+  $('secTpl').textContent = t('secTpl');
+  $('secLogos').textContent = t('secLogos');
+  $('secSets').textContent = t('secSets');
+  $('setInsertBtn').textContent = t('libInsert');
+  $('setAddBtn').textContent = t('setAdd'); $('setAddBtn').title = t('setAddTip');
+  $('setRemoveBtn').textContent = t('libRemove');
+  $('iconInsertBtn').textContent = t('libInsert');
+  $('iconAddBtn').textContent = t('libAdd'); $('iconAddBtn').title = t('libAddImgTip');
+  $('iconRemoveBtn').textContent = t('libRemove');
+  $('logoInsertBtn').textContent = t('libInsert');
+  $('logoAddBtn').textContent = t('libAdd'); $('logoAddBtn').title = t('libAddImgTip');
+  $('logoRemoveBtn').textContent = t('libRemove');
+  $('tplInsertBtn').textContent = t('tplInsert');
+  $('tplInsertBtn').title = t('tplInsertTip');
+  $('tplAddBtn').textContent = t('tplAdd');
+  $('tplAddBtn').title = t('tplAddTip');
+  $('tplRemoveBtn').textContent = t('tplRemove');
+  $('tplRemoveBtn').title = t('tplRemoveTip');
+  $('cleanBtn').textContent = t('cleanSlate');
+  $('cleanBtn').title = t('cleanTip');
+}
+
+/* ================= boot ================= */
+Office.onReady(info => {
+  try{ me = localStorage.getItem('critick-me') || ''; }catch(e){}
+  if (info.host !== Office.HostType.PowerPoint){
+    applyLang();
+    $('sub').textContent = t('notPpt');
+    return;
+  }
+  ready = true;
+  applyLang();
+  drawLibrary();
+});
+
+/* ================= me bar ================= */
+function drawMeBar(){
+  const bar = $('mebar');
+  bar.innerHTML = '';
+  if (!ready){ bar.classList.remove('on'); return; }
+  if (!me){
+    bar.classList.add('on');
+    const q = document.createElement('span');
+    q.textContent = t('whoami');
+    bar.appendChild(q);
+    Object.keys(people).forEach(name => {
+      const b = document.createElement('button');
+      b.className = 'who-chip';
+      b.textContent = name;
+      b.addEventListener('click', () => {
+        me = name;
+        try{ localStorage.setItem('critick-me', me); }catch(e){}
+        drawMeBar();
+      });
+      bar.appendChild(b);
+    });
+    return;
+  }
+  const mine = notes.filter(n => n.person === me && n.status === 'open').length;
+  bar.classList.add('on');
+  const wave = document.createElement('span');
+  wave.textContent = '👋';
+  bar.appendChild(wave);
+  const d = document.createElement('span');
+  d.className = 'pdot';
+  d.style.background = ensureColor(me);
+  bar.appendChild(d);
+  const txt = document.createElement('span');
+  txt.textContent = me + ' · ' + (mine ? t('forYou')(mine) : t('nothingForYou'));
+  bar.appendChild(txt);
+  if (mine){
+    const btn = document.createElement('button');
+    btn.className = 'mine-btn';
+    btn.textContent = t('showMine');
+    btn.addEventListener('click', async () => {
+      filterP = me;
+      $('filterPerson').value = me;
+      drawNotes();
+      await applyFilterPins();
+      persist();
+    });
+    bar.appendChild(btn);
+  }
+}
+
+/* ================= people & colors ================= */
+function hashColor(name){
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return 'hsl(' + (h % 360) + ' 62% 38%)';
+}
+function ensureColor(name){
+  if (!people[name]){ people[name] = hashColor(name); persistPeople(); }
+  return people[name];
+}
+function personColor(n){
+  return n.person ? ensureColor(n.person) : SELF;
+}
+function persistPeople(){
+  try{
+    Office.context.document.settings.set(KEY_PEOPLE, JSON.stringify(people));
+    Office.context.document.settings.saveAsync(()=>{});
+  }catch(e){}
+}
+function drawPeople(){
+  const el = $('people');
+  el.innerHTML = '';
+  const none = document.createElement('button');
+  none.className = 'chip' + (selPerson === '' ? ' sel' : '');
+  none.innerHTML = '<span class="dot" style="background:' + SELF + '"></span>';
+  none.appendChild(document.createTextNode(t('myself')));
+  none.addEventListener('click', () => { selPerson = ''; drawPeople(); });
+  el.appendChild(none);
+  Object.keys(people).forEach(name => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (selPerson === name ? ' sel' : '');
+    c.innerHTML = '<span class="dot" style="background:' + people[name] + '"></span>';
+    c.appendChild(document.createTextNode(name));
+    c.addEventListener('click', () => { selPerson = name; drawPeople(); });
+    el.appendChild(c);
+  });
+  const plus = document.createElement('button');
+  plus.className = 'chip'; plus.textContent = '+';
+  plus.title = t('addPerson');
+  plus.addEventListener('click', () => {
+    plus.style.display = 'none';
+    inp.style.display = 'inline-block';
+    inp.focus();
+  });
+  el.appendChild(plus);
+  const inp = document.createElement('input');
+  inp.id = 'newperson'; inp.dir = 'auto'; inp.placeholder = t('personName');
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter'){
+      const nm = inp.value.trim();
+      if (nm){ ensureColor(nm); selPerson = nm; }
+      drawPeople(); drawFilter();
+    }
+    if (e.key === 'Escape') drawPeople();
+  });
+  el.appendChild(inp);
+  updateAddBtnLabel();
+  drawFilter();
+}
+function updateAddBtnLabel(txt){
+  $('addbtn').textContent = txt || t('addSlide');
+}
+function drawFilter(){
+  const sel = $('filterPerson');
+  const cur = filterP;
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = t('everyone');
+  sel.appendChild(o0);
+  Object.keys(people).forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+$('filterPerson').addEventListener('change', async e => { filterP = e.target.value; drawNotes(); await applyFilterPins(); persist(); });
+
+/* ================= selection awareness ================= */
+function watchSelection(){
+  try{
+    Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, updateAnchor);
+  }catch(e){}
+  updateAnchor();
+}
+async function updateAnchor(){
+  if (!ready) return;
+  try{
+    await PowerPoint.run(async ctx => {
+      const shapes = ctx.presentation.getSelectedShapes();
+      shapes.load('items/name,items/id');
+      const selSlides = ctx.presentation.getSelectedSlides();
+      selSlides.load('items/id');
+      await ctx.sync();
+      const selName = shapes.items.length ? shapes.items[0].name : null;
+      const nonPin = shapes.items.find(x => ((x.name || '')).indexOf('CriTick') !== 0);
+      const prevSelId = lastSel.id;
+      lastSel = {
+        slideId: selSlides.items.length ? selSlides.items[0].id : null,
+        id: nonPin ? nonPin.id : null,
+        name: nonPin ? nonPin.name : null,
+        ts: Date.now()
+      };
+      if (pendingImgSel && lastSel.id !== prevSelId) hideImgSlots();
+
+      if (selName && selName.indexOf('CriTickPin-') === 0){
+        highlightNote(selName.slice('CriTickPin-'.length));
+        updateAddBtnLabel();
+        return;
+      }
+      clearHighlight();
+      reconcilePins();
+      if (shapes.items.length){
+        updateAddBtnLabel(t('addObject'));
+      } else {
+        updateAddBtnLabel();
+      }
+    });
+  }catch(e){}
+}
+function highlightNote(uid){
+  clearHighlight();
+  const row = document.querySelector('.note[data-uid="' + uid + '"]');
+  if (row){ row.classList.add('hl'); row.scrollIntoView({block:'nearest'}); }
+}
+function clearHighlight(){
+  document.querySelectorAll('.note.hl').forEach(r => r.classList.remove('hl'));
+}
+
+/* ================= slide positions ================= */
+async function refreshSlideMap(){
+  if (!ready) return;
+  try{
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides;
+      sl.load('items/id');
+      await ctx.sync();
+      slidePos = {};
+      sl.items.forEach((s, i) => { slidePos[s.id] = i + 1; });
+    });
+  }catch(e){}
+}
+
+/* ================= pin images ================= */
+function pinImageBase64(num, color){
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 29, 0, Math.PI * 2);
+  g.fillStyle = color; g.fill();
+  g.lineWidth = 4; g.strokeStyle = '#FFFFFF'; g.stroke();
+  g.fillStyle = '#FFFFFF';
+  g.font = 'bold 30px Heebo, Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(num), 32, 34);
+  return c.toDataURL('image/png').split(',')[1];
+}
+function insertPinImage(num, color, left, top, size){
+  lastOp = Date.now();
+  const px = size || 26;
+  return new Promise(resolve => {
+    Office.context.document.setSelectedDataAsync(pinImageBase64(num, color), {
+      coercionType: Office.CoercionType.Image,
+      imageLeft: left, imageTop: top, imageWidth: px, imageHeight: px
+    }, r => resolve(r.status === Office.AsyncResultStatus.Succeeded));
+  });
+}
+async function slideShapeNames(slideId){
+  let names = [];
+  await PowerPoint.run(async ctx => {
+    const sl = ctx.presentation.slides.getItem(slideId);
+    sl.shapes.load('items/name');
+    await ctx.sync();
+    names = sl.shapes.items.map(x => x.name);
+  });
+  return names;
+}
+async function adoptNewPin(slideId, beforeNames, uid){
+  await PowerPoint.run(async ctx => {
+    const sl = ctx.presentation.slides.getItem(slideId);
+    sl.shapes.load('items/name');
+    await ctx.sync();
+    const nw = sl.shapes.items.find(x => beforeNames.indexOf(x.name) === -1);
+    if (nw) nw.name = 'CriTickPin-' + uid;
+    try{ ctx.presentation.setSelectedSlides([slideId]); }catch(e){}
+    await ctx.sync();
+  });
+}
+async function removePinImage(note){
+  lastOp = Date.now();
+  try{
+    await PowerPoint.run(async ctx => {
+      const slide = ctx.presentation.slides.getItem(note.slideId);
+      slide.shapes.load('items/name,items/left,items/top');
+      await ctx.sync();
+      const sh = slide.shapes.items.find(x => x.name === 'CriTickPin-' + note.uid);
+      if (sh){ note.pinLeft = sh.left; note.pinTop = sh.top; sh.delete(); }
+      const lb = slide.shapes.items.find(x => x.name === 'CriTickLabel-' + note.uid);
+      if (lb) lb.delete();
+      await ctx.sync();
+    });
+  }catch(e){}
+}
+async function placePinImage(note){
+  lastOp = Date.now();
+  try{
+    const k = (note.pinNum - 1) % 8;
+    const left = (note.pinLeft !== undefined && note.pinLeft !== null) ? note.pinLeft : 14 + k * 30;
+    const top = (note.pinTop !== undefined && note.pinTop !== null) ? note.pinTop : 14;
+    await PowerPoint.run(async ctx => {
+      try{ ctx.presentation.setSelectedSlides([note.slideId]); }catch(e){}
+      await ctx.sync();
+    });
+    const before = await slideShapeNames(note.slideId);
+    await insertPinImage(note.pinNum, personColor(note), left, top);
+    await adoptNewPin(note.slideId, before, note.uid);
+    if (labelsOn && note.status === 'open'){
+      await PowerPoint.run(async ctx => {
+        const sl = ctx.presentation.slides.getItem(note.slideId);
+        const tb = sl.shapes.addTextBox(String(note.pinNum) + '. ' + note.text, {left: left + 30, top: Math.max(2, top - 2), width: 190, height: 36});
+        tb.name = 'CriTickLabel-' + note.uid;
+        labelStyle(tb, personColor(note));
+        await ctx.sync();
+      });
+    }
+  }catch(e){}
+}
+function matchesFilter(n){ return !filterP || n.person === filterP; }
+
+async function maybePlace(note){
+  if (note.hidden || note.status === 'fixed') return;
+  if (matchesFilter(note)){ note.filterHidden = false; await placePinImage(note); }
+  else note.filterHidden = true;
+}
+async function applyFilterPins(){
+  for (const n of notes){
+    if (n.hidden || n.status === 'fixed') continue;
+    if (matchesFilter(n) && n.filterHidden){
+      n.filterHidden = false;
+      await placePinImage(n);
+    } else if (!matchesFilter(n) && !n.filterHidden){
+      await removePinImage(n);
+      n.filterHidden = true;
+    }
+  }
+}
+async function recolorPin(note){
+  if (note.hidden || note.filterHidden || note.status === 'fixed') return;
+  await removePinImage(note);
+  await placePinImage(note);
+}
+async function syncPinForStatus(n){
+  if (n.status === 'fixed'){
+    if (!n.hidden && !n.filterHidden) await removePinImage(n);
+  } else {
+    await maybePlace(n);
+  }
+}
+async function clearAllPins(){
+  const affected = notes.filter(n => !n.hidden && !n.filterHidden && n.status === 'open');
+  if (!affected.length){ toast(t('tNoPins')); return; }
+  try{
+    for (const n of affected){
+      await removePinImage(n);
+      n.hidden = true;
+    }
+    try{
+      await PowerPoint.run(async ctx => {
+        const all = ctx.presentation.slides;
+        all.load('items/id');
+        await ctx.sync();
+        const refs = [];
+        all.items.forEach(sl => {
+          const r = ctx.presentation.slides.getItem(sl.id);
+          r.shapes.load('items/name');
+          refs.push(r);
+        });
+        await ctx.sync();
+        refs.forEach(r => r.shapes.items.forEach(sh => {
+          if (((sh.name || '')).indexOf('CriTickGhost-') === 0) sh.delete();
+        }));
+        await ctx.sync();
+      });
+    }catch(e){}
+    persist();
+    drawNotes();
+    pushUndo({type:'clearAll', uids: affected.map(n => n.uid)});
+    toast(t('tPinsRemoved')(affected.length));
+  }catch(e){ toast(t('tCantRemove')); }
+}
+$('clearPins').addEventListener('click', clearAllPins);
+
+/* ================= pin-deleted -> note-deleted ================= */
+let reconBusy = false;
+async function reconcilePins(){
+  if (!ready || reconBusy) return;
+  if (Date.now() - lastOp < 2500) return;
+  const cands = notes.filter(n => n.status === 'open' && !n.hidden && !n.filterHidden && Date.now() - n.ts > 5000);
+  if (!cands.length) return;
+  reconBusy = true;
+  try{
+    const bySlide = {};
+    cands.forEach(n => { (bySlide[n.slideId] = bySlide[n.slideId] || []).push(n); });
+    const gone = [];
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const existing = {};
+      all.items.forEach(sl => { existing[sl.id] = true; });
+      const loaded = {};
+      Object.keys(bySlide).forEach(id => {
+        if (!existing[id]) return;
+        loaded[id] = ctx.presentation.slides.getItem(id);
+        loaded[id].shapes.load('items/name');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(id => {
+        const names = loaded[id].shapes.items.map(x => x.name);
+        bySlide[id].forEach(n => {
+          if (names.indexOf('CriTickPin-' + n.uid) === -1) gone.push(n);
+        });
+      });
+    });
+    if (gone.length){
+      for (const n of gone){
+        const idx = notes.indexOf(n);
+        if (idx > -1){
+          notes.splice(idx, 1);
+          pushUndo({type:'delete', note: JSON.parse(JSON.stringify(n))});
+        }
+        try{
+          await PowerPoint.run(async ctx => {
+            const sl = ctx.presentation.slides.getItem(n.slideId);
+            sl.shapes.load('items/name');
+            await ctx.sync();
+            const lb = sl.shapes.items.find(x => x.name === 'CriTickLabel-' + n.uid);
+            if (lb) lb.delete();
+            await ctx.sync();
+          });
+        }catch(err){}
+      }
+      persist();
+      drawNotes();
+      toast(gone.length === 1 ? t('tGoneOne') : t('tGoneMany')(gone.length));
+    }
+  }catch(e){}
+  reconBusy = false;
+}
+
+/* ================= add note ================= */
+async function addNote(){
+  const text = $('noteinput').value.trim();
+  if (!text || !ready) return;
+  $('addbtn').disabled = true;
+  try{
+    let slideId = null, shapeName = null;
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      const shapes = ctx.presentation.getSelectedShapes();
+      shapes.load('items/name');
+      await ctx.sync();
+      slideId = sel.items.length ? sel.items[0].id : null;
+      shapeName = (shapes.items.length && shapes.items[0].name.indexOf('CriTickPin-') !== 0) ? shapes.items[0].name : null;
+    });
+    if (!slideId){ toast(t('tClickSlide')); $('addbtn').disabled = false; return; }
+    let pinNum = 0;
+    notes.forEach(n => { if (n.pinNum > pinNum) pinNum = n.pinNum; });
+    pinNum++;
+    const uid = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const note = {uid, pinNum, slideId, shapeName, text, person: selPerson, status: 'open', hidden: false, filterHidden: false, pinLeft: null, pinTop: null, ts: Date.now()};
+    notes.push(note);
+    await maybePlace(note);
+    persist();
+    pushUndo({type:'add', uid});
+    $('noteinput').value = '';
+    await refreshSlideMap();
+    drawNotes();
+  }catch(e){
+    toast(t('tCouldNotAdd'));
+  }
+  $('addbtn').disabled = false;
+  $('noteinput').focus();
+}
+$('addbtn').addEventListener('click', addNote);
+$('noteinput').addEventListener('keydown', e => { if (e.key === 'Enter') addNote(); });
+
+/* ================= list ================= */
+function drawNotes(){
+  const el = $('notes');
+  const openCount = notes.filter(n => n.status === 'open').length;
+  const fixedCount = notes.length - openCount;
+  $('progress').innerHTML = '';
+  if (notes.length){
+    $('progress').appendChild(document.createTextNode(openCount + ' ' + t('open') + ' · '));
+    const b = document.createElement('b');
+    b.textContent = fixedCount + ' ' + t('fixedWord');
+    $('progress').appendChild(b);
+  }
+  drawMeBar();
+  const visible = notes.filter(n => !filterP || n.person === filterP);
+  if (!visible.length){
+    el.innerHTML = '<div class="empty">' + (notes.length ? t('emptyFilter') : t('emptyNew')) + '</div>';
+    return;
+  }
+  const groups = {};
+  visible.forEach(n => {
+    const p = slidePos[n.slideId] || 9999;
+    (groups[p] = groups[p] || []).push(n);
+  });
+  el.innerHTML = '';
+  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
+    const head = document.createElement('div');
+    head.className = 'slidehead';
+    head.textContent = p === 9999 ? t('deletedSlide') : t('slideWord') + ' ' + p;
+    if (p !== 9999){
+      head.title = t('goSlide') + ' ' + p;
+      head.addEventListener('click', () => goTo(groups[p][0].slideId));
+    }
+    el.appendChild(head);
+    groups[p].forEach(n => {
+      el.appendChild(buildRow(n, p));
+    });
+  });
+}
+
+function buildRow(n, p){
+  const row = document.createElement('div');
+  row.className = 'note st-' + n.status;
+  row.dataset.uid = n.uid;
+  row.innerHTML = '<div class="num"></div>' +
+    '<div class="body"><div class="txt"></div><div class="meta"></div></div>' +
+    '<div class="acts">' +
+      (n.status === 'open' ? '<button class="eye">👁</button><button class="img-btn">🖼</button>' : '') +
+      '<button class="st-btn">👍</button>' +
+      '<button class="del">✕</button>' +
+    '</div>';
+  const num = row.querySelector('.num');
+  num.textContent = n.pinNum;
+  num.style.background = personColor(n);
+  const txtEl = row.querySelector('.txt');
+  txtEl.textContent = n.text;
+  txtEl.title = t('editTip');
+  txtEl.addEventListener('dblclick', e => {
+    e.stopPropagation();
+    startEdit(n, txtEl);
+  });
+  const meta = row.querySelector('.meta');
+  const assign = document.createElement('span');
+  assign.className = 'assign';
+  assign.title = t('reassignTip');
+  const d = document.createElement('span');
+  d.className = 'pdot';
+  d.style.background = n.person ? ensureColor(n.person) : SELF;
+  assign.appendChild(d);
+  assign.appendChild(document.createTextNode(n.person || t('myself')));
+  assign.addEventListener('click', e => {
+    e.stopPropagation();
+    const sel = document.createElement('select');
+    sel.className = 'assign-sel';
+    const o0 = document.createElement('option');
+    o0.value = ''; o0.textContent = t('myself');
+    sel.appendChild(o0);
+    Object.keys(people).forEach(name => {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+    });
+    sel.value = n.person;
+    sel.addEventListener('click', ev => ev.stopPropagation());
+    sel.addEventListener('change', async () => {
+      const prev = n.person;
+      n.person = sel.value;
+      pushUndo({type:'person', uid: n.uid, prev});
+      persist();
+      await recolorPin(n);
+      await applyFilterPins();
+      drawNotes();
+    });
+    sel.addEventListener('blur', () => drawNotes());
+    assign.replaceWith(sel);
+    sel.focus();
+  });
+  meta.appendChild(assign);
+  meta.appendChild(document.createTextNode(' · '));
+  meta.appendChild(document.createTextNode(t('slideMeta') + ' ' + (slidePos[n.slideId] || '?')));
+  if (n.status === 'fixed'){
+    const st = document.createElement('span');
+    st.className = 'st fixed';
+    st.textContent = t('fixedLabel');
+    meta.appendChild(document.createTextNode(' · '));
+    meta.appendChild(st);
+  }
+  if (n.shapeName){
+    const tag = document.createElement('span');
+    tag.className = 'tag'; tag.textContent = n.shapeName;
+    row.querySelector('.body').appendChild(tag);
+  }
+  const eye = row.querySelector('.eye');
+  if (eye){
+    eye.title = t('eyeTip');
+    if (n.hidden) eye.classList.add('off');
+    eye.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (n.hidden){ n.hidden = false; await maybePlace(n); pushUndo({type:'show', uid:n.uid}); }
+      else { await removePinImage(n); n.hidden = true; pushUndo({type:'hide', uid:n.uid}); }
+      persist(); drawNotes();
+    });
+  }
+  const imgBtn = row.querySelector('.img-btn');
+  if (imgBtn){
+    imgBtn.title = t('imgTip');
+    imgBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      pickImageFor(n);
+    });
+  }
+  const stBtn = row.querySelector('.st-btn');
+  stBtn.title = n.status === 'fixed' ? t('reopenTip') : t('fixTip');
+  stBtn.addEventListener('click', async e => {
+    e.stopPropagation();
+    pushUndo({type:'status', uid:n.uid, prev: n.status});
+    n.status = n.status === 'fixed' ? 'open' : 'fixed';
+    await syncPinForStatus(n);
+    persist(); drawNotes();
+  });
+  const del = row.querySelector('.del');
+  del.title = t('delTip');
+  del.addEventListener('click', async e => {
+    e.stopPropagation();
+    await removePinImage(n);
+    const idx = notes.indexOf(n);
+    if (idx > -1) notes.splice(idx, 1);
+    pushUndo({type:'delete', note: JSON.parse(JSON.stringify(n))});
+    persist(); drawNotes();
+  });
+  row.addEventListener('click', () => goTo(n.slideId));
+  return row;
+}
+
+/* ================= edit note text ================= */
+function startEdit(n, txtEl){
+  const inp = document.createElement('input');
+  inp.className = 'txt-edit';
+  inp.dir = 'auto';
+  inp.value = n.text;
+  inp.addEventListener('click', e => e.stopPropagation());
+  const finish = save => {
+    const v = inp.value.trim();
+    if (save && v && v !== n.text){
+      pushUndo({type:'edit', uid:n.uid, prev:n.text});
+      n.text = v;
+      persist();
+    }
+    drawNotes();
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') finish(true);
+    if (e.key === 'Escape') finish(false);
+  });
+  inp.addEventListener('blur', () => finish(true));
+  txtEl.replaceWith(inp);
+  inp.focus();
+  inp.select();
+}
+
+/* ================= locate pin ================= */
+async function selectPin(n){
+  try{
+    await PowerPoint.run(async ctx => {
+      try{ ctx.presentation.setSelectedSlides([n.slideId]); }catch(e){}
+      const sl = ctx.presentation.slides.getItem(n.slideId);
+      sl.shapes.load('items/name,items/id');
+      await ctx.sync();
+      const sh = sl.shapes.items.find(x => x.name === 'CriTickPin-' + n.uid);
+      if (sh){ try{ ctx.presentation.setSelectedShapes([sh.id]); }catch(e){} }
+      await ctx.sync();
+    });
+    await flashPin(n);
+  }catch(e){ goTo(n.slideId); }
+}
+async function flashPin(n){
+  try{
+    await removePinImage(n);
+    if (n.pinLeft === null || n.pinLeft === undefined){ await placePinImage(n); return; }
+    const grow = 8;
+    const before = await slideShapeNames(n.slideId);
+    await insertPinImage(n.pinNum, personColor(n), n.pinLeft - grow, n.pinTop - grow, 26 + grow * 2);
+    await adoptNewPin(n.slideId, before, n.uid);
+    await new Promise(r => setTimeout(r, 650));
+    await removePinImage(n);
+    n.pinLeft += grow; n.pinTop += grow;
+    await placePinImage(n);
+  }catch(e){}
+}
+async function goTo(slideId){
+  if (!slidePos[slideId]) return;
+  try{
+    await PowerPoint.run(async ctx => {
+      ctx.presentation.setSelectedSlides([slideId]);
+      await ctx.sync();
+    });
+  }catch(e){}
+}
+
+/* ================= undo ================= */
+function pushUndo(entry){
+  undoStack.push(entry);
+  if (undoStack.length > 30) undoStack.shift();
+}
+function findNote(uid){ return notes.find(n => n.uid === uid); }
+
+async function undo(){
+  const e = undoStack.pop();
+  if (!e){ toast(t('tNothingUndo')); return; }
+  try{
+    if (e.type === 'add'){
+      const n = findNote(e.uid);
+      if (n){ await removePinImage(n); notes.splice(notes.indexOf(n), 1); }
+    }
+    else if (e.type === 'delete'){
+      notes.push(e.note);
+      await maybePlace(e.note);
+    }
+    else if (e.type === 'person'){
+      const n = findNote(e.uid);
+      if (n){ n.person = e.prev; await recolorPin(n); await applyFilterPins(); }
+    }
+    else if (e.type === 'edit'){
+      const n = findNote(e.uid);
+      if (n) n.text = e.prev;
+    }
+    else if (e.type === 'status'){
+      const n = findNote(e.uid);
+      if (n){ n.status = e.prev; await syncPinForStatus(n); }
+    }
+    else if (e.type === 'hide'){
+      const n = findNote(e.uid);
+      if (n){ n.hidden = false; await maybePlace(n); }
+    }
+    else if (e.type === 'show'){
+      const n = findNote(e.uid);
+      if (n){ await removePinImage(n); n.hidden = true; }
+    }
+    else if (e.type === 'clearAll'){
+      for (const uid of e.uids){
+        const n = findNote(uid);
+        if (n){ n.hidden = false; await maybePlace(n); }
+      }
+    }
+    persist();
+    await refreshSlideMap();
+    drawNotes();
+    toast(t('tUndone'));
+  }catch(err){ toast(t('tCantUndo')); }
+}
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z'){
+    if (e.target.tagName === 'INPUT' && e.target.value) return;
+    e.preventDefault();
+    undo();
+  }
+});
+
+/* ================= persistence ================= */
+function persist(){
+  try{
+    Office.context.document.settings.set(KEY, JSON.stringify(notes));
+    Office.context.document.settings.saveAsync(res => {
+      $('savedflag').textContent = res.status === Office.AsyncResultStatus.Succeeded
+        ? t('saved')
+        : '';
+    });
+  }catch(e){}
+}
+
+/* ================= place image at pin ================= */
+let imgTarget = null;
+let labelsOn = false;
+function pickImageFor(n){
+  imgTarget = n;
+  $('imgpick').value = '';
+  $('imgpick').click();
+}
+$('imgpick').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  const n = imgTarget;
+  imgTarget = null;
+  if (!file || !n) return;
+  try{
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(new Error('read'));
+      r.readAsDataURL(file);
+    });
+    const dims = await new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res({w: im.naturalWidth, h: im.naturalHeight});
+      im.onerror = () => rej(new Error('img'));
+      im.src = dataUrl;
+    });
+    // current pin position (live, in case it was dragged)
+    let px = null, py = null;
+    try{
+      await PowerPoint.run(async ctx => {
+        const sl = ctx.presentation.slides.getItem(n.slideId);
+        sl.shapes.load('items/name,items/left,items/top');
+        await ctx.sync();
+        const sh = sl.shapes.items.find(x => x.name === 'CriTickPin-' + n.uid);
+        if (sh){ px = sh.left; py = sh.top; }
+        try{ ctx.presentation.setSelectedSlides([n.slideId]); }catch(err){}
+        await ctx.sync();
+      });
+    }catch(err){}
+    if (px === null){ px = 120; py = 90; }
+    const targetW = 240;
+    const w = Math.min(targetW, dims.w);
+    const h = Math.round(w * dims.h / dims.w);
+    lastOp = Date.now();
+    const ok = await new Promise(res => {
+      Office.context.document.setSelectedDataAsync(dataUrl.split(',')[1], {
+        coercionType: Office.CoercionType.Image,
+        imageLeft: px, imageTop: py, imageWidth: w, imageHeight: h
+      }, r => res(r.status === Office.AsyncResultStatus.Succeeded));
+    });
+    toast(ok ? t('tImgPlaced') : t('tImgFail'));
+  }catch(err){
+    toast(t('tImgFail'));
+  }
+});
+
+/* ================= layout pins ================= */
+const CATS = [
+  {key:'header', label:'Header', letter:'H', color:'#1C1B1A'},
+  {key:'tagline', label:'Tagline', letter:'T', color:'#2563EB'},
+  {key:'description', label:'Description', letter:'D', color:'#0E9F6E'},
+  {key:'fabric', label:'Fabric', letter:'F', color:'#D97706'},
+  {key:'image', label:'Image', letter:'I', color:'#475569'}
+];
+const KEY_LAYOUTS = 'critick-layouts';
+const KEY_BINDINGS = 'critick-bindings';
+let layouts = {};
+let bindings = []; // {cat, slideId, shapeId}
+function persistBindings(){
+  try{
+    Office.context.document.settings.set(KEY_BINDINGS, JSON.stringify(bindings));
+    Office.context.document.settings.saveAsync(()=>{});
+  }catch(e){}
+}
+function persistLayouts(){
+  try{
+    Office.context.document.settings.set(KEY_LAYOUTS, JSON.stringify(layouts));
+    Office.context.document.settings.saveAsync(()=>{});
+  }catch(e){}
+}
+
+let lastLayoutSync = 0;
+let lastSel = {slideId: null, id: null, name: null, ts: 0};
+
+function ghostPngBase64(label, wPt, hPt){
+  const scale = Math.min(3, 900 / Math.max(wPt, hPt));
+  const W = Math.max(24, Math.round(wPt * scale));
+  const H = Math.max(24, Math.round(hPt * scale));
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.strokeStyle = '#475569';
+  g.lineWidth = Math.max(2, Math.round(scale * 1.5));
+  g.setLineDash([g.lineWidth * 3, g.lineWidth * 2]);
+  g.strokeRect(g.lineWidth, g.lineWidth, W - g.lineWidth * 2, H - g.lineWidth * 2);
+  g.fillStyle = 'rgba(71,85,105,0.35)';
+  g.font = 'bold ' + Math.round(Math.min(W, H) * 0.5) + 'px Heebo, Arial, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(String(label), W / 2, H / 2);
+  return c.toDataURL('image/png').split(',')[1];
+}
+
+async function toggleGhosts(){
+  if (!ready) return;
+  const keys = Object.keys(layouts).filter(k => layouts[k]);
+  try{
+    let slideId = null, hadGhosts = false;
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      await ctx.sync();
+      slideId = sel.items.length ? sel.items[0].id : null;
+      if (!slideId) return;
+      const sl = ctx.presentation.slides.getItem(slideId);
+      sl.shapes.load('items/name');
+      await ctx.sync();
+      sl.shapes.items.forEach(sh => {
+        if (((sh.name || '')).indexOf('CriTickGhost-') === 0){ hadGhosts = true; sh.delete(); }
+      });
+      await ctx.sync();
+    });
+    if (!slideId){ toast(t('tClickSlide')); return; }
+    if (hadGhosts){ toast(t('tGhostsOff')); return; }
+    if (!keys.length){ toast(t('tNoLayout')); return; }
+    lastOp = Date.now();
+    for (const k of keys){
+      const def = layouts[k];
+      let label;
+      if (k.indexOf('image') === 0) label = imageSlotNum(k);
+      else { const c = CATS.find(x => x.key === k); label = c ? c.letter : '?'; }
+      const before = await slideShapeNames(slideId);
+      await new Promise(res => {
+        Office.context.document.setSelectedDataAsync(ghostPngBase64(label, def.width, def.height), {
+          coercionType: Office.CoercionType.Image,
+          imageLeft: def.left, imageTop: def.top, imageWidth: def.width, imageHeight: def.height
+        }, r => res(r.status === Office.AsyncResultStatus.Succeeded));
+      });
+      await PowerPoint.run(async ctx => {
+        const sl = ctx.presentation.slides.getItem(slideId);
+        sl.shapes.load('items/name');
+        await ctx.sync();
+        const nw = sl.shapes.items.find(x => before.indexOf(x.name) === -1);
+        if (nw) nw.name = 'CriTickGhost-' + k;
+        try{ ctx.presentation.setSelectedSlides([slideId]); }catch(e){}
+        await ctx.sync();
+      });
+    }
+    toast(t('tGhostsOn'));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
+function imageKeys(){
+  return Object.keys(layouts)
+    .filter(k => k.indexOf('image') === 0 && layouts[k])
+    .sort((a, b) => parseInt(a.slice(5) || '1') - parseInt(b.slice(5) || '1'));
+}
+function imageSlotNum(k){ return parseInt(k.slice(5) || '1'); }
+
+async function captureImageSlot(key, sel){
+  try{
+    let def = null;
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.load('left,top,width,height');
+      await ctx.sync();
+      def = {left: sh.left, top: sh.top, width: sh.width, height: sh.height,
+             src: {slideId: sel.slideId, shapeId: sel.shape.id, shapeName: sel.shape.name || null}};
+    });
+    layouts[key] = def;
+    persistLayouts();
+    drawCats();
+    toast(t('tImgSlotSaved')(imageSlotNum(key)));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
+async function imageChipClick(){
+  if (!ready) return;
+  const sel = await getSelection();
+  if (sel.slideId && !sel.shape){ toggleGhosts(); return; }
+  if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
+  const keys = imageKeys();
+  // clicking an existing image mother = update that slot
+  const own = keys.find(k => layouts[k].src &&
+    String(layouts[k].src.shapeId) === String(sel.shape.id) &&
+    String(layouts[k].src.slideId) === String(sel.slideId));
+  if (own){ await captureImageSlot(own, sel); return; }
+  if (!keys.length){ await captureImageSlot('image1', sel); return; }
+  const motherSlide = layouts[keys[0]].src ? layouts[keys[0]].src.slideId : null;
+  if (motherSlide && String(sel.slideId) === String(motherSlide)){
+    const next = Math.max.apply(null, keys.map(imageSlotNum)) + 1;
+    await captureImageSlot('image' + next, sel);
+    return;
+  }
+  // elsewhere: one slot snaps directly, several open the chooser
+  if (keys.length === 1){ await snapToSlot(keys[0], sel); return; }
+  showImgSlots(sel, keys);
+}
+
+async function snapToSlot(key, sel){
+  try{
+    await refreshDefFromSrc(key);
+    const def = layouts[key];
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.load('width,height');
+      await ctx.sync();
+      const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
+      sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.width * ratio;
+      await ctx.sync();
+    });
+    bindings = bindings.filter(b => !(String(b.shapeId) === String(sel.shape.id) && String(b.slideId) === String(sel.slideId)));
+    bindings.push({cat: key, slideId: sel.slideId, shapeId: sel.shape.id});
+    persistBindings();
+    lastOp = Date.now();
+    toast(t('tImgSnapped')(imageSlotNum(key)));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
+let pendingImgSel = null;
+function showImgSlots(sel, keys){
+  pendingImgSel = sel;
+  const row = $('imgslots');
+  row.innerHTML = '';
+  keys.forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'cat-chip';
+    b.title = 'Snap to Image ' + imageSlotNum(k);
+    const sq = document.createElement('span');
+    sq.className = 'sq';
+    sq.style.background = '#475569';
+    sq.textContent = imageSlotNum(k);
+    b.appendChild(sq);
+    b.addEventListener('click', async () => {
+      const target = pendingImgSel;
+      hideImgSlots();
+      if (target) await snapToSlot(k, target);
+    });
+    row.appendChild(b);
+  });
+  const x = document.createElement('button');
+  x.className = 'cat-chip';
+  x.textContent = '\u2715';
+  x.addEventListener('click', hideImgSlots);
+  row.appendChild(x);
+  row.style.display = 'flex';
+}
+function hideImgSlots(){
+  pendingImgSel = null;
+  $('imgslots').style.display = 'none';
+}
+
+function drawCats(){
+  const el = $('catchips');
+  el.innerHTML = '';
+  CATS.forEach(cat => {
+    const isImg = cat.key === 'image';
+    const imgCount = isImg ? imageKeys().length : 0;
+    const saved = isImg ? imgCount > 0 : !!layouts[cat.key];
+    const b = document.createElement('button');
+    b.className = 'cat-chip';
+    b.title = isImg
+      ? 'On the mother slide: save this image as a slot. Anywhere else: snap the selected image to the nearest slot.'
+      : (saved
+        ? ('Snap the selected element to the ' + cat.label + ' layout')
+        : ('Save the selected element as the ' + cat.label + ' layout'));
+    const sq = document.createElement('span');
+    sq.className = 'sq';
+    sq.style.background = cat.color;
+    sq.textContent = cat.letter;
+    b.appendChild(sq);
+    b.appendChild(document.createTextNode(cat.label));
+    if (saved){
+      const ok = document.createElement('span');
+      ok.className = 'has';
+      ok.textContent = '\u2713' + (imgCount > 1 ? imgCount : '');
+      b.appendChild(ok);
+    }
+    if (isImg) b.addEventListener('click', imageChipClick);
+    else b.addEventListener('click', async () => {
+      const s0 = await getSelection();
+      if (s0.slideId && !s0.shape){ toggleGhosts(); return; }
+      if (saved) applyToSelection(cat); else captureFromSelection(cat);
+    });
+    el.appendChild(b);
+  });
+  const tb = $('teachBtn');
+  tb.textContent = t('teach');
+  tb.title = t('teachTip');
+  $('updateAllBtn').textContent = t('updateAll');
+  $('updateAllBtn').title = t('updateAllTip');
+}
+$('teachBtn').addEventListener('click', () => {
+  layouts = {};
+  bindings = [];
+  persistLayouts();
+  persistBindings();
+  drawCats();
+  toast(t('tReset'));
+});
+
+async function getSelection(){
+  let slideId = null, shape = null;
+  try{
+    await PowerPoint.run(async ctx => {
+      const sel = ctx.presentation.getSelectedSlides();
+      sel.load('items/id');
+      const shp = ctx.presentation.getSelectedShapes();
+      shp.load('items/id,items/name');
+      await ctx.sync();
+      slideId = sel.items.length ? sel.items[0].id : null;
+      const cand = shp.items.find(x => ((x.name || '')).indexOf('CriTick') !== 0);
+      shape = cand ? {id: cand.id, name: cand.name} : null;
+    });
+  }catch(e){}
+  if (!shape && lastSel.id && Date.now() - lastSel.ts < 10000){ shape = {id: lastSel.id, name: lastSel.name}; slideId = slideId || lastSel.slideId; }
+  if (!slideId && lastSel.slideId) slideId = lastSel.slideId;
+  return {slideId, shape};
+}
+
+async function captureFromSelection(cat){
+  if (!ready) return;
+  try{
+    const sel = await getSelection();
+    if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
+    let def = null;
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      sh.load('left,top,width,height');
+      await ctx.sync();
+      def = {left: sh.left, top: sh.top, width: sh.width, height: sh.height,
+             src: {slideId: sel.slideId, shapeId: sel.shape.id, shapeName: sel.shape.name || null}};
+      try{
+        const font = sh.textFrame.textRange.font;
+        font.load('size,name,color,bold');
+        await ctx.sync();
+        def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
+      }catch(e){}
+    });
+    layouts[cat.key] = def;
+    persistLayouts();
+    drawCats();
+    toast(t('tTaught')(cat.label));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
+async function refreshDefFromSrc(catKey){
+  const def = layouts[catKey];
+  if (!def || !def.src) return false;
+  let found = false;
+  try{
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      if (!all.items.some(sl => String(sl.id) === String(def.src.slideId))) return;
+      const sl = ctx.presentation.slides.getItem(def.src.slideId);
+      sl.shapes.load('items/id,items/name,items/left,items/top,items/width,items/height');
+      await ctx.sync();
+      let sh = sl.shapes.items.find(x => String(x.id) === String(def.src.shapeId));
+      if (!sh && def.src.shapeName){
+        sh = sl.shapes.items.find(x => x.name === def.src.shapeName);
+        if (sh) def.src.shapeId = sh.id;
+      }
+      if (!sh) return;
+      found = true;
+      def.left = sh.left; def.top = sh.top; def.width = sh.width; def.height = sh.height;
+      try{
+        const font = sh.textFrame.textRange.font;
+        font.load('size,name,color,bold');
+        await ctx.sync();
+        def.font = {size: font.size, name: font.name, color: font.color, bold: font.bold};
+      }catch(e){}
+    });
+    persistLayouts();
+  }catch(e){}
+  return found;
+}
+
+async function applyToSelection(cat){
+  if (!ready) return;
+  if (!layouts[cat.key]) return;
+  const sel = await getSelection();
+  const d0 = layouts[cat.key];
+  if (sel.shape && d0.src && String(d0.src.shapeId) === String(sel.shape.id) && String(d0.src.slideId) === String(sel.slideId)){
+    // the master itself was clicked: re-learn the layout from it, never snap it back
+    await captureFromSelection(cat);
+    return;
+  }
+  await refreshDefFromSrc(cat.key);
+  const def = layouts[cat.key];
+  try{
+    if (!sel.slideId || !sel.shape){ toast(t('tSelectFirst')); return; }
+    lastOp = Date.now();
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(sel.slideId);
+      const sh = sl.shapes.getItem(sel.shape.id);
+      if (cat.key === 'image'){
+        sh.load('width,height');
+        await ctx.sync();
+        const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
+        sh.left = def.left;
+        sh.top = def.top;
+        sh.width = def.width;
+        sh.height = def.width * ratio;
+        await ctx.sync();
+        return;
+      }
+      sh.left = def.left;
+      sh.top = def.top;
+      sh.width = def.width;
+      sh.height = def.height;
+      if (def.font){
+        try{
+          const fo = sh.textFrame.textRange.font;
+          if (def.font.size) fo.size = def.font.size;
+          if (def.font.name) fo.name = def.font.name;
+          if (def.font.color) fo.color = def.font.color;
+          if (def.font.bold !== undefined) fo.bold = def.font.bold;
+        }catch(e){}
+      }
+      await ctx.sync();
+    });
+    bindings = bindings.filter(b => !(String(b.shapeId) === String(sel.shape.id) && String(b.slideId) === String(sel.slideId)));
+    if (!def.src || String(def.src.shapeId) !== String(sel.shape.id) || String(def.src.slideId) !== String(sel.slideId)){
+      bindings.push({cat: cat.key, slideId: sel.slideId, shapeId: sel.shape.id});
+    }
+    persistBindings();
+    toast(t('tSnapped')(cat.label));
+  }catch(e){ toast(t('tLayoutFail')); }
+}
+
+async function applyDefTo(slideId, shapeId, def, catKey){
+  const attempt = async withFont => {
+    await PowerPoint.run(async ctx => {
+      const sl = ctx.presentation.slides.getItem(slideId);
+      sl.shapes.load('items/id,items/name,items/width,items/height');
+      await ctx.sync();
+      const sh = sl.shapes.items.find(x => String(x.id) === String(shapeId));
+      if (!sh) throw new Error('gone');
+      if (String(catKey || '').indexOf('image') === 0){
+        const ratio = (sh.width > 0) ? sh.height / sh.width : 1;
+        sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.width * ratio;
+        await ctx.sync();
+        return;
+      }
+      sh.left = def.left; sh.top = def.top; sh.width = def.width; sh.height = def.height;
+      if (withFont && def.font){
+        const fo = sh.textFrame.textRange.font;
+        if (def.font.size) fo.size = def.font.size;
+        if (def.font.name) fo.name = def.font.name;
+        if (def.font.color) fo.color = def.font.color;
+        if (def.font.bold !== undefined) fo.bold = def.font.bold;
+      }
+      await ctx.sync();
+    });
+  };
+  try{ await attempt(true); return true; }
+  catch(e){
+    try{ await attempt(false); return true; }
+    catch(e2){ return false; }
+  }
+}
+
+$('updateAllBtn').addEventListener('click', async () => {
+  if (!ready) return;
+  const cats = Object.keys(layouts).filter(k => layouts[k]);
+  if (!cats.length){ toast(t('tNothingBound')); return; }
+  try{
+    // remember where the layout USED to be, then refresh it live
+    const oldDefs = JSON.parse(JSON.stringify(layouts));
+    let mastersLocated = 0;
+    for (const k of cats){ if (await refreshDefFromSrc(k)) mastersLocated++; }
+    let mastersFound = 0;
+    for (const k of cats){
+      const d = layouts[k];
+      if (d && d.src && (d.left !== oldDefs[k].left || d.top !== oldDefs[k].top || d.width !== oldDefs[k].width ||
+          JSON.stringify(d.font) !== JSON.stringify(oldDefs[k].font))) mastersFound++;
+    }
+    // find every element sitting at an old-layout position
+    const targets = []; // {cat, slideId, shapeId}
+    const seen = {};
+    const TOL = 6;
+    let scanned = 0, mastersLive = 0;
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const loaded = {};
+      all.items.forEach(sl => {
+        loaded[sl.id] = ctx.presentation.slides.getItem(sl.id);
+        loaded[sl.id].shapes.load('items/id,items/name,items/left,items/top,items/width');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(sid => {
+        loaded[sid].shapes.items.forEach(sh => {
+          if (((sh.name || '')).indexOf('CriTick') === 0) return;
+          scanned++;
+          cats.forEach(k => {
+            const od = oldDefs[k];
+            if (!od) return;
+            if (layouts[k] && layouts[k].src && String(layouts[k].src.shapeId) === String(sh.id) && String(layouts[k].src.slideId) === String(sid)) return; // the master itself
+            if (Math.abs(sh.left - od.left) <= TOL && Math.abs(sh.top - od.top) <= TOL){
+              const key = sid + '|' + sh.id;
+              if (!seen[key]){ seen[key] = true; targets.push({cat: k, slideId: sid, shapeId: sh.id}); }
+            }
+          });
+        });
+      });
+    });
+    // union with recorded bindings (precise, survives layout moves)
+    bindings.forEach(b => {
+      if (!layouts[b.cat]) return;
+      const key = b.slideId + '|' + b.shapeId;
+      if (!seen[key]){ seen[key] = true; targets.push(b); }
+    });
+    if (!targets.length){
+      toast('Found nothing \u2014 cats:' + cats.length + ' \u00b7 masters located:' + mastersLocated + '/' + cats.length +
+            ' \u00b7 changed:' + mastersFound + ' \u00b7 bindings:' + bindings.length + ' \u00b7 scanned:' + scanned);
+      return;
+    }
+    lastOp = Date.now();
+    let done = 0;
+    for (const tg of targets){
+      const ok = await applyDefTo(tg.slideId, tg.shapeId, layouts[tg.cat], tg.cat);
+      if (ok){
+        done++;
+        if (!bindings.some(b => String(b.shapeId) === String(tg.shapeId) && String(b.slideId) === String(tg.slideId))) bindings.push(tg);
+      }
+    }
+    persistBindings();
+    toast(done ? t('tUpdated')(done) : t('tNothingBound'));
+  }catch(e){ toast(t('tLayoutFail')); }
+});
+
+// live sync: if a taught source element was edited, its definition follows
+async function syncLayoutDefs(){
+  if (!ready) return;
+  if (Date.now() - lastLayoutSync < 4000) return;
+  const withSrc = Object.keys(layouts).filter(k => layouts[k] && layouts[k].src);
+  if (!withSrc.length) return;
+  lastLayoutSync = Date.now();
+  try{
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const existing = {};
+      all.items.forEach(sl => { existing[sl.id] = true; });
+      const jobs = [];
+      withSrc.forEach(k => {
+        const src = layouts[k].src;
+        if (!existing[src.slideId]) return;
+        const sl = ctx.presentation.slides.getItem(src.slideId);
+        sl.shapes.load('items/id,items/left,items/top,items/width,items/height');
+        jobs.push({k, sl});
+      });
+      await ctx.sync();
+      const fontJobs = [];
+      jobs.forEach(j => {
+        const sh = j.sl.shapes.items.find(x => x.id === layouts[j.k].src.shapeId);
+        if (!sh) return;
+        const d = layouts[j.k];
+        d.left = sh.left; d.top = sh.top; d.width = sh.width; d.height = sh.height;
+        try{
+          const font = sh.textFrame.textRange.font;
+          font.load('size,name,color,bold');
+          fontJobs.push({k: j.k, font});
+        }catch(e){}
+      });
+      await ctx.sync();
+      fontJobs.forEach(fj => {
+        try{
+          layouts[fj.k].font = {size: fj.font.size, name: fj.font.name, color: fj.font.color, bold: fj.font.bold};
+        }catch(e){}
+      });
+    });
+    persistLayouts();
+  }catch(e){}
+}
+
+/* ================= icon library ================= */
+/* ================= local asset libraries (icons / logos / backgrounds) ================= */
+/* All stored locally on this machine via IndexedDB. Nothing is uploaded anywhere. */
+
+/* Storage layer: IndexedDB with guaranteed store creation, localStorage fallback.
+   Robust against pre-existing DBs missing the object store (bumps version to create it). */
+function assetDB(dbName, store){
+  return new Promise((res, rej) => {
+    let rq;
+    try{ rq = indexedDB.open(dbName); }catch(e){ return rej(e); }
+    rq.onerror = () => rej(rq.error || new Error('idb open error'));
+    rq.onsuccess = () => {
+      const db = rq.result;
+      if (db.objectStoreNames.contains(store)){ res(db); return; }
+      // store missing -> reopen at next version and create it
+      const v = db.version + 1;
+      db.close();
+      let rq2;
+      try{ rq2 = indexedDB.open(dbName, v); }catch(e){ return rej(e); }
+      rq2.onupgradeneeded = () => {
+        const d2 = rq2.result;
+        if (!d2.objectStoreNames.contains(store)) d2.createObjectStore(store, {keyPath: 'name'});
+      };
+      rq2.onsuccess = () => res(rq2.result);
+      rq2.onerror = () => rej(rq2.error || new Error('idb upgrade error'));
+    };
+    rq.onupgradeneeded = () => {
+      const d = rq.result;
+      if (!d.objectStoreNames.contains(store)) d.createObjectStore(store, {keyPath: 'name'});
+    };
+  });
+}
+function assetPut(db, store, rec){
+  return assetDB(db, store).then(d => new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readwrite');
+    tx.objectStore(store).put(rec);
+    tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
+  }));
+}
+function assetAll(db, store){
+  return assetDB(db, store).then(d => new Promise((res, rej) => {
+    const rq = d.transaction(store).objectStore(store).getAll();
+    rq.onsuccess = () => res(rq.result || []);
+    rq.onerror = () => rej(rq.error);
+  }));
+}
+function assetGet(db, store, name){
+  return assetDB(db, store).then(d => new Promise((res, rej) => {
+    const rq = d.transaction(store).objectStore(store).get(name);
+    rq.onsuccess = () => res(rq.result || null);
+    rq.onerror = () => rej(rq.error);
+  }));
+}
+function assetDel(db, store, name){
+  return assetDB(db, store).then(d => new Promise((res, rej) => {
+    const tx = d.transaction(store, 'readwrite');
+    tx.objectStore(store).delete(name);
+    tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error);
+  }));
+}
+
+const LIB = {
+  icon: {db: 'critick-icons', store: 'icon', sel: 'iconSelect', search: 'iconSearch', maxPt: 90},
+  logo: {db: 'critick-logos', store: 'logo', sel: 'logoSelect', search: 'logoSearch', maxPt: 200}
+};
+const libFilter = {icon: '', logo: '', set: '', tpl: ''};
+
+/* --- svg helpers (reused for uploaded .svg assets) --- */
+function svgToPngBase64(svgText, pw, ph){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = pw; c.height = ph;
+      c.getContext('2d').drawImage(img, 0, 0, pw, ph);
+      res(c.toDataURL('image/png').split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgText)));
+  });
+}
+function svgDims(svg){
+  let w = null, h = null;
+  const vb = svg.match(/viewBox\s*=\s*["']\s*[\d.+-]+[\s,]+[\d.+-]+[\s,]+([\d.+-]+)[\s,]+([\d.+-]+)/i);
+  if (vb){ w = parseFloat(vb[1]); h = parseFloat(vb[2]); }
+  if (!(w > 0) || !(h > 0)){
+    const mw = svg.match(/\bwidth\s*=\s*["']([\d.]+)(px)?["']/i);
+    const mh = svg.match(/\bheight\s*=\s*["']([\d.]+)(px)?["']/i);
+    if (mw && mh){ w = parseFloat(mw[1]); h = parseFloat(mh[1]); }
+  }
+  return (w > 0 && h > 0) ? {w: w, h: h} : {w: 1, h: 1};
+}
+
+/* read a File into a storable record fragment */
+function readAsset(file){
+  return new Promise((res, rej) => {
+    const isSvg = /svg/i.test(file.type) || /\.svg$/i.test(file.name);
+    const r = new FileReader();
+    r.onerror = () => rej(new Error('read'));
+    if (isSvg){
+      r.onload = () => res({isSvg: true, text: r.result, mime: 'image/svg+xml'});
+      r.readAsText(file);
+    } else {
+      r.onload = () => {
+        const s = r.result;
+        const m = s.match(/^data:([^;]+)/);
+        res({isSvg: false, b64: s.split(',')[1], mime: (m && m[1]) || file.type || 'image/png'});
+      };
+      r.readAsDataURL(file);
+    }
+  });
+}
+
+/* natural size of a raster image (data base64) */
+function rasterDims(mime, b64){
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => res({w: img.naturalWidth || 1, h: img.naturalHeight || 1});
+    img.onerror = () => res({w: 1, h: 1});
+    img.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+  });
+}
+
+/* draw one kind's <select> */
+async function drawKindMenu(kind){
+  const cfg = LIB[kind]; const sel = $(cfg.sel); if (!sel) return;
+  const cur = sel.value;
+  const q = (libFilter[kind] || '').toLowerCase();
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = t('libChoose');
+  sel.appendChild(o0);
+  try{
+    let list = await assetAll(cfg.db, cfg.store);
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+    if (q) list = list.filter(r => r.name.toLowerCase().indexOf(q) !== -1);
+    list.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name; o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }catch(e){}
+}
+async function drawLibrary(){
+  bindLibSearches();
+  await drawKindMenu('icon');
+  await drawKindMenu('logo');
+  await drawSetMenu();
+  await drawTplMenu();
+}
+
+let libSearchesBound = false;
+function bindLibSearches(){
+  if (libSearchesBound) return;
+  libSearchesBound = true;
+  const wire = (inputId, kind, redraw) => {
+    const el = $(inputId);
+    if (el) el.addEventListener('input', () => { libFilter[kind] = el.value.trim(); redraw(); });
+  };
+  wire('iconSearch', 'icon', () => drawKindMenu('icon'));
+  wire('logoSearch', 'logo', () => drawKindMenu('logo'));
+  wire('setSearch', 'set', drawSetMenu);
+  wire('tplSearch', 'tpl', drawTplMenu);
+  ['iconSearch','logoSearch','setSearch','tplSearch'].forEach(id => { const e = $(id); if (e) e.placeholder = t('libSearchPh'); });
+}
+
+/* ================= image sets (folder of images -> new slide) ================= */
+function setsDB(){
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('critick-imagesets', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('set', {keyPath: 'name'});
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function setsOp(mode, fn){
+  return setsDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('set', mode);
+    const out = fn(tx.objectStore('set'));
+    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+const setsPut = rec => setsOp('readwrite', st => st.put(rec));
+const setsDel = name => setsOp('readwrite', st => st.delete(name));
+const setsAll = () => setsDB().then(db => new Promise((res, rej) => {
+  const rq = db.transaction('set').objectStore('set').getAll();
+  rq.onsuccess = () => res(rq.result || []); rq.onerror = () => rej(rq.error);
+}));
+const setsGet = name => setsDB().then(db => new Promise((res, rej) => {
+  const rq = db.transaction('set').objectStore('set').get(name);
+  rq.onsuccess = () => res(rq.result || null); rq.onerror = () => rej(rq.error);
+}));
+
+async function drawSetMenu(){
+  const sel = $('setSelect'); if (!sel) return;
+  const cur = sel.value;
+  const q = (libFilter.set || '').toLowerCase();
+  sel.innerHTML = '';
+  const o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('libChoose'); sel.appendChild(o0);
+  try{
+    let list = await setsAll();
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
+    if (q) list = list.filter(r => r.name.toLowerCase().indexOf(q) !== -1);
+    list.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name; o.textContent = r.name + ' (' + (r.images ? r.images.length : 0) + ')';
+      sel.appendChild(o);
+    });
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }catch(e){}
+}
+
+let pendingSetName = null;
+$('setAddBtn').addEventListener('click', () => { pickKind = 'set'; const p = $('assetpick'); p.value = ''; p.click(); });
+
+async function ingestSet(files){
+  const imgs = files.filter(f => /image\/(png|jpe?g)/i.test(f.type) || /\.(png|jpe?g)$/i.test(f.name));
+  if (!imgs.length){ toast(t('tSetEmpty')); return; }
+  // default name from the common folder if available, else ask
+  let guess = '';
+  const wp = imgs[0].webkitRelativePath || '';
+  if (wp && wp.indexOf('/') !== -1) guess = wp.split('/')[0];
+  const name = (prompt(t('tSetName'), guess) || '').trim();
+  if (!name) return;
+  const stored = [];
+  for (const f of imgs){
+    try{
+      const a = await readAsset(f);
+      if (!a.isSvg) stored.push({b64: a.b64, mime: a.mime});
+    }catch(e){}
+  }
+  if (!stored.length){ toast(t('tSetEmpty')); return; }
+  await setsPut({name: name, images: stored, ts: Date.now()});
+  await drawSetMenu();
+  $('setSelect').value = name;
+  toast(t('tSetAdded')(name));
+}
+
+$('setRemoveBtn').addEventListener('click', async () => {
+  const name = $('setSelect').value;
+  if (!name){ toast(t('tSetNone')); return; }
+  try{ await setsDel(name); await drawSetMenu(); toast(t('tAssetRemoved')); }catch(e){}
+});
+
+$('setInsertBtn').addEventListener('click', async () => {
+  const name = $('setSelect').value;
+  if (!name){ toast(t('tSetNone')); return; }
+  try{
+    const rec = await setsGet(name);
+    if (!rec || !rec.images || !rec.images.length){ toast(t('tSetNone')); return; }
+    await insertImageSet(name, rec.images);
+    toast(t('tSetInserted')(rec.images.length));
+  }catch(e){ toast(t('tImgFail')); }
+});
+
+/* insert an icon/logo image on the current slide, aspect preserved */
+async function insertImageAsset(rec, maxPt){
+  lastOp = Date.now();
+  if (rec.isSvg && rec.text){
+    const d = svgDims(rec.text);
+    let iw, ih;
+    if (d.w >= d.h){ iw = maxPt; ih = Math.max(8, Math.round(maxPt * d.h / d.w)); }
+    else { ih = maxPt; iw = Math.max(8, Math.round(maxPt * d.w / d.h)); }
+    const opts = {imageLeft: 40, imageTop: 40, imageWidth: iw, imageHeight: ih};
+    const okV = await new Promise(res => {
+      try{
+        Office.context.document.setSelectedDataAsync(rec.text, Object.assign({coercionType: Office.CoercionType.XmlSvg}, opts),
+          r => res(r.status === Office.AsyncResultStatus.Succeeded));
+      }catch(e){ res(false); }
+    });
+    if (okV) return true;
+    const png = await svgToPngBase64(rec.text, iw * 4, ih * 4);
+    return await new Promise(res => {
+      Office.context.document.setSelectedDataAsync(png, Object.assign({coercionType: Office.CoercionType.Image}, opts),
+        r => res(r.status === Office.AsyncResultStatus.Succeeded));
+    });
+  }
+  const dim = await rasterDims(rec.mime, rec.b64);
+  let iw, ih;
+  if (dim.w >= dim.h){ iw = maxPt; ih = Math.max(8, Math.round(maxPt * dim.h / dim.w)); }
+  else { ih = maxPt; iw = Math.max(8, Math.round(maxPt * dim.w / dim.h)); }
+  return await new Promise(res => {
+    Office.context.document.setSelectedDataAsync(rec.b64,
+      {coercionType: Office.CoercionType.Image, imageLeft: 40, imageTop: 40, imageWidth: iw, imageHeight: ih},
+      r => res(r.status === Office.AsyncResultStatus.Succeeded));
+  });
+}
+
+/* one hidden picker, routed by the last-clicked "Add" button */
+let pickKind = 'icon';
+function libAdd(kind){ pickKind = kind; const p = $('assetpick'); p.value = ''; p.click(); }
+$('assetpick').addEventListener('change', async e => {
+  const files = [...e.target.files];
+  if (!files.length) return;
+  if (pickKind === 'set'){ await ingestSet(files); return; }
+  const cfg = LIB[pickKind];
+  let added = 0, lastName = '', lastErr = '', stage = 'start';
+  for (const file of files){
+    try{
+      stage = 'read';
+      const a = await readAsset(file);
+      const name = file.name.replace(/\.[^.]+$/, '');
+      const rec = {name: name, ts: Date.now(), isSvg: !!a.isSvg};
+      if (a.isSvg) rec.text = a.text; else { rec.b64 = a.b64; rec.mime = a.mime; }
+      stage = 'store';
+      await assetPut(cfg.db, cfg.store, rec);
+      stage = 'verify';
+      const back = await assetGet(cfg.db, cfg.store, name);
+      if (!back) throw new Error('stored but not found on read-back');
+      added++; lastName = name;
+    }catch(err){ lastErr = 'at ' + stage + ': ' + ((err && err.message) || String(err)); }
+  }
+  await drawKindMenu(pickKind);
+  const sel = $(cfg.sel);
+  if (added === 1){ sel.value = lastName; toast(t('tAssetAdded')(lastName)); }
+  else if (added > 1) toast(t('tAssetAddedMany')(added));
+  else toast('FAIL ' + lastErr);
+});
+
+/* icons */
+$('iconInsertBtn').addEventListener('click', async () => {
+  const sel = $('iconSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
+  try{
+    const rec = await assetGet(LIB.icon.db, LIB.icon.store, sel.value);
+    if (!rec){ toast(t('tAssetNone')); return; }
+    const ok = await insertImageAsset(rec, LIB.icon.maxPt);
+    if (!ok) toast(t('tImgFail'));
+  }catch(e){ toast(t('tImgFail')); }
+});
+$('iconAddBtn').addEventListener('click', () => libAdd('icon'));
+$('iconRemoveBtn').addEventListener('click', async () => {
+  const sel = $('iconSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
+  try{ await assetDel(LIB.icon.db, LIB.icon.store, sel.value); await drawKindMenu('icon'); toast(t('tAssetRemoved')); }catch(e){}
+});
+
+/* logos */
+$('logoInsertBtn').addEventListener('click', async () => {
+  const sel = $('logoSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
+  try{
+    const rec = await assetGet(LIB.logo.db, LIB.logo.store, sel.value);
+    if (!rec){ toast(t('tAssetNone')); return; }
+    const ok = await insertImageAsset(rec, LIB.logo.maxPt);
+    if (!ok) toast(t('tImgFail'));
+  }catch(e){ toast(t('tImgFail')); }
+});
+$('logoAddBtn').addEventListener('click', () => libAdd('logo'));
+$('logoRemoveBtn').addEventListener('click', async () => {
+  const sel = $('logoSelect'); if (!sel.value){ toast(t('tAssetNone')); return; }
+  try{ await assetDel(LIB.logo.db, LIB.logo.store, sel.value); await drawKindMenu('logo'); toast(t('tAssetRemoved')); }catch(e){}
+});
+
+
+/* ================= template library ================= */
+function tplDB(){
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('critick-templates', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('tpl', {keyPath: 'name'});
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function tplPut(rec){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('tpl', 'readwrite');
+    tx.objectStore('tpl').put(rec);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  }));
+}
+function tplAll(){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const rq = db.transaction('tpl').objectStore('tpl').getAll();
+    rq.onsuccess = () => res(rq.result || []);
+    rq.onerror = () => rej(rq.error);
+  }));
+}
+function tplGet(name){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const rq = db.transaction('tpl').objectStore('tpl').get(name);
+    rq.onsuccess = () => res(rq.result || null);
+    rq.onerror = () => rej(rq.error);
+  }));
+}
+function tplDel(name){
+  return tplDB().then(db => new Promise((res, rej) => {
+    const tx = db.transaction('tpl', 'readwrite');
+    tx.objectStore('tpl').delete(name);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  }));
+}
+
+async function drawTplMenu(){
+  const sel = $('tplSelect');
+  const cur = sel.value;
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = t('tplChoose');
+  sel.appendChild(o0);
+  try{
+    const list = await tplAll();
+    list.sort((a, b) => a.name.localeCompare(b.name));
+    list.forEach(r => {
+      const o = document.createElement('option');
+      o.value = r.name; o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  }catch(e){}
+}
+
+const BLANK_PPTX_B64 = 'UEsDBBQAAAAIABtSEF33oKEYJAEAANcDAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbLWTS0/CQBDH736KzV4JXfBgjKFw8HHydcAPMNlO6cZ9pTMQ+PYOrRo0KCTKpc3s/B+/NN3JbB28WmFLLsVSj4uRVhhtqlxclPplfje81IoYYgU+RSz1BknPpmeT+SYjKTFHKnXDnK+MIdtgACpSxiibOrUBWMZ2YTLYV1igOR+NLoxNkTHykLcZWsJusIalZ3W7lvOepEVPWl33ym1ZqSFn7yyw7M0qVt9qhu8VhTg7DTUu00AE2uyv2K5+bvgwPsnHaV2F6hlafoQgMpMzm9wiibETF79H7YFNde0sVskug1iK3bDgv4xFABcHh2jIyyH1r/F/43SpxyHcwyYtmXaH0+D02cdBPQCx/OG7w2mg+uyDUCzXBPvn3zm6mM9K093L6RtQSwMEFAAAAAgAG1IQXVfNaN+wAAAALwEAAAsAAABfcmVscy8ucmVsc43PvQrCMBAA4N2nCLfbtA4i0rSLCF2lPkBIrmmx+SEXxb69wUmLg+P9fXdXt087swdGmrwTUBUlMHTK68kZAdf+vD0AoySdlrN3KGBBgrbZ1BecZcozNE6BWEYcCRhTCkfOSY1oJRU+oMuVwUcrUw6j4UGqmzTId2W55/HTgBXKOi0gdroC1i8B/8H9MEwKT17dLbr0Y8eqI8syGkwCQkg8RKScfHcXWQaeL+JffzYvUEsDBBQAAAAIABtSEF3XCR77AgEAAAUCAAAUAAAAcHB0L3ByZXNlbnRhdGlvbi54bWyNkU1OwzAQhfecwvKeuglpSKM43SAkJFgBB7DsSWMp/pHHQMvpcUMiErHpcmbe+/zG0xxOZiCfEFA7y2m22VICVjql7ZHT97fH24oSjMIqMTgLnJ4B6aG9aXztAyDYKGJykkSxWAtO+xh9zRjKHozAjfNg06xzwYiYynBkKoivRDcDy7fbkhmhLZ384Rq/6zot4cHJD5Oe/4UEGMYc2GuPM81fQ1tusYo07oiDehEYITypZ4ztukO04jTPivuiuiuL9E+hvnTSJKOsbdg/+0RcsmbKrlzY8z/7yvj6TeQpHSnP9ilnupQ8c1pWu+pSsFFlXQScdPNklO2zophlbH289gdQSwMEFAAAAAgAG1IQXZOes8HSAAAAQAIAAB8AAABwcHQvX3JlbHMvcHJlc2VudGF0aW9uLnhtbC5yZWxzrZHBasMwDIbvewqje+OkgzJG3V5GoYddSvcAwlYSs8Q2ljbat69pB0vLNnboUb+kTx9ouT6Mg/qkzD4GA01Vg6Jgo/OhM/C238yeQLFgcDjEQAaOxLBePSx3NKCUHe59YlUggQ30IulZa7Y9jchVTBRKp415RCll7nRC+44d6XldL3SeMuAGqrbOQN66BtT+mOg/8Ni23tJLtB8jBfnhhubBO3pFFsoFi7kjMTAJryaaqvBB/+I1v7vXjdFX+rfF4z0tpOxOLM7lJfyW0FePX50AUEsDBBQAAAAIABtSEF0kvemrZwEAAPkCAAAVAAAAcHB0L3NsaWRlcy9zbGlkZTEueG1sjZLLbsMgEEX3+QrEviFxHqqiOFn0uWkTKe0HEMA2CgYE1HX+voNtmlbKIhszc5i5cAevt22tUCOcl0bneDqeYCQ0M1zqMsefH8939xj5QDWnymiR47PweLsZre3KK46gWfsVzXEVgl0R4lklaurHxgoNe4VxNQ2QupJwR79BtFYkm0yWpKZS46Hf3dJvikIy8WjYVy106EWcUDTAxX0lrU9q9hY164QHma7735U6a+yg+CZatB9OiA7p5sXZg927yNl7s3dIchgYRprWMBdMho2hrEt10wXkb3sUK5MUXbWFq+MK9lCbYxj/OX5JZKINiPWQXSirdldqWfV0pZqkA8jl0FFMBmcxTGaZcm/U7pruWgZ+CSe5eOighYdDx3KaYxXAcWgh4ieIjmUWWRZZFhlElDGYLFQMQSJZIr81s0RmicwTmSeySGSRyDKRJUaVkvoE7x0XjAqjXnuQItxP/2KtNw+GfwBQSwMEFAAAAAgAG1IQXdBzOCi1AAAAOAEAACAAAABwcHQvc2xpZGVzL19yZWxzL3NsaWRlMS54bWwucmVsc42PsQ7CMAxEd74i8k7SMiCECCwICYkJlQ+wEreNaJMoThH9ezICYmA8+/zOtzs8x0E8KLELXkMtKxDkTbDOdxpuzWm5AcEZvcUheNIwE8Nhv9hdacBcbrh3kUWBeNbQ5xy3SrHpaUSWIZIvmzakEXORqVMRzR07UquqWqv0zoAvqDhbDelsaxDNHOkfeGhbZ+gYzDSSzz8yFA/O0gXnMOWCxdRR1iDl+/zDVMsSAaq8pj4K719QSwMEFAAAAAgAG1IQXTCUHGg4AQAAdAIAACEAAABwcHQvc2xpZGVMYXlvdXRzL3NsaWRlTGF5b3V0MS54bWyNUstuwyAQvOcrEPeGpIeqsmJH6vPSNpGSfgDF64fKSwtx7b8vYFtppRxyAXZ2Zthd2Gx7JUkH6Fqjc7perigBLUzZ6jqnn8eXm3tKnOe65NJoyOkAjm6LxcZmTpZvfDAnT4KFdhnPaeO9zRhzogHF3dJY0CFXGVTchxBrViL/CdZKstvV6o4p3mo66fEavamqVsCTEScF2o8mCJL7UL5rWutmN3uNm0VwwSap/5fkBxua/ZJcf1OSaNgFYE1T6+IgS6K5CshDohRxHvaIACmvu1e0B7vHiIuPbo+kLaN6ElE2JSZaCnWXDuyvPJrVsxXP+gpV3MMUSJ/T8FZDXFnEoPdEjKA4o6LZXeCK5vkCm80XsPOlixhMncVj7DzVLvGd212XygrT9YCPCbLhdccuzpTRZP4uxS9QSwMEFAAAAAgAG1IQXeTUfwq1AAAAOAEAACwAAABwcHQvc2xpZGVMYXlvdXRzL19yZWxzL3NsaWRlTGF5b3V0MS54bWwucmVsc42PsQ7CMAxEd74i8k7SMiCECF0QEgMLKh9gJW4b0SZRHBD8PRkLYmA8+/zOt2ue0ygelNgFr6GWFQjyJljnew3X9rjcgOCM3uIYPGl4EUOzX+wuNGIuNzy4yKJAPGsYco5bpdgMNCHLEMmXTRfShLnI1KuI5oY9qVVVrVWaM+ALKk5WQzrZGkT7ivQPPHSdM3QI5j6Rzz8yFI/O0hk5UypYTD1lDVLO5x+mWpYIUOU19VF4/wZQSwMEFAAAAAgAG1IQXbL+l8eBAQAAMAMAACEAAABwcHQvc2xpZGVNYXN0ZXJzL3NsaWRlTWFzdGVyMS54bWyNkttywiAQhu99Cob7Fo2ptRljb3pypgdnbB8AgRymBBhAG9++SxLa2vHCG/j52P1hWRa3bSPRXlhXa5XjyeUYI6GY5rUqc/zx/nAxx8h5qjiVWokcH4TDt8vRwmRO8hfqvLAILJTLaI4r701GiGOVaKi71EYo2Cu0baiHpS0Jt/QLrBtJkvF4RhpaKzzk23PydVHUTNxptmuE8r2JFZJ6uL6rauOimznHzVjhwKbLPrpSVyDbSL4MhZp3K0SH1P7Rmo1Z28DZ635tUc3h2TBStIHXwWTYGMK6pdp3gvxND2ZltKJZW9gmzFAeanMMTTiEkQQmWo9YD9kvZdXbiVhW3Z+IJvEA8nvoKCyGyoKMxTJpX6hB23KSY+mhMN+C4p+gtmUSWBJYEhgoyhg8IEQMIpIkkp+YaSTTSNJI0kiuIrmKZBbJDKNK1uoT2homjAotn3oQFZQ6/MtnetA7v+LPzi+PSdeuZJJep/PpLL3ByGaB2BWf4L5H/9JHA+u/+vIbUEsDBBQAAAAIABtSEF1L2b8IywAAAMABAAAsAAAAcHB0L3NsaWRlTWFzdGVycy9fcmVscy9zbGlkZU1hc3RlcjEueG1sLnJlbHOtkE1qwzAQhfc9hZh9JTuLEkqUbEohkFVJDjBIY1vUloRmEurbVySLxqWFLroZmJ/3vcdsdh/TqC5UOKRoodUNKIou+RB7C6fj6+MaFAtGj2OKZGEmht32YfNGI0rV8BAyqwqJbGEQyc/GsBtoQtYpU6ybLpUJpbalNxndO/ZkVk3zZMo9A75B1d5bKHvfgjrOmf4CT10XHL0kd54oyg8ehsfg6YBzOkvFYulJLGh9P18ctbpagPkl2uo/o0nV0iLUdXKrXznM4vHbT1BLAwQUAAAACAAbUhBdJy2HUOsBAABaBwAAFAAAAHBwdC90aGVtZS90aGVtZTEueG1s1ZVdb5swFIbv9yss368mhI81CqlSErSLSrto+gMcY8CLsSNstc2/n2Mo39G0ado0kMA+53nf4wNGrB/eSw5eaaWYFBFc3DkQUEFkykQewZdD8vkLBEpjkWIuBY3ghSr4sPm0xitd0JICIxdqhSNYaH1eIaSICWN1J89UmFwmqxJrM61ylFb4zdiWHLmOE6ASMwGBwKVx/ZZljFBwuFrCzYf5npuL0MqWI7x6JrZkX2Lh9LS43tRFxbwCr5hH0BRK5duBvmsIOFbaJCLo2AOizRq1Iq5vaHu6xB6NrhGkJ9fqqvzYCj3P94Jt6+/W/lNuH+6DfdD6WQATYlpdzHiGbuw1bA+qhzPeu3C3XAz4nv9ywm/96znglx3vTfgkibtn2IPqoT/h/cf7x93Q3+/4YMKHznbnhQPeQgVn4jShHT9Yxh/dtkgm+ddZ/N73ktBt8I5Cvd1l91omhb612Ur8XVaJAezbxZoJoC9nmmFiuBhzdqwYeGJ5oa918IriXr4OETUKoZFtycRPa/yae2eI+u3V3ZY3m80Y58/6wumTsmtRkrM0MUE7saL24Z4LM2zqDbm/JELT9XIxnP2+c6399w5o3BTNMkr0jUg3Nbnacjb752E0t7JjnvxnG2q8YtT7XMzHg8Z/qjay+QFQSwECFAMUAAAACAAbUhBd96ChGCQBAADXAwAAEwAAAAAAAAAAAAAAgAEAAAAAW0NvbnRlbnRfVHlwZXNdLnhtbFBLAQIUAxQAAAAIABtSEF1XzWjfsAAAAC8BAAALAAAAAAAAAAAAAACAAVUBAABfcmVscy8ucmVsc1BLAQIUAxQAAAAIABtSEF3XCR77AgEAAAUCAAAUAAAAAAAAAAAAAACAAS4CAABwcHQvcHJlc2VudGF0aW9uLnhtbFBLAQIUAxQAAAAIABtSEF2TnrPB0gAAAEACAAAfAAAAAAAAAAAAAACAAWIDAABwcHQvX3JlbHMvcHJlc2VudGF0aW9uLnhtbC5yZWxzUEsBAhQDFAAAAAgAG1IQXSS96atnAQAA+QIAABUAAAAAAAAAAAAAAIABcQQAAHBwdC9zbGlkZXMvc2xpZGUxLnhtbFBLAQIUAxQAAAAIABtSEF3QczgotQAAADgBAAAgAAAAAAAAAAAAAACAAQsGAABwcHQvc2xpZGVzL19yZWxzL3NsaWRlMS54bWwucmVsc1BLAQIUAxQAAAAIABtSEF0wlBxoOAEAAHQCAAAhAAAAAAAAAAAAAACAAf4GAABwcHQvc2xpZGVMYXlvdXRzL3NsaWRlTGF5b3V0MS54bWxQSwECFAMUAAAACAAbUhBd5NR/CrUAAAA4AQAALAAAAAAAAAAAAAAAgAF1CAAAcHB0L3NsaWRlTGF5b3V0cy9fcmVscy9zbGlkZUxheW91dDEueG1sLnJlbHNQSwECFAMUAAAACAAbUhBdsv6Xx4EBAAAwAwAAIQAAAAAAAAAAAAAAgAF0CQAAcHB0L3NsaWRlTWFzdGVycy9zbGlkZU1hc3RlcjEueG1sUEsBAhQDFAAAAAgAG1IQXUvZvwjLAAAAwAEAACwAAAAAAAAAAAAAAIABNAsAAHBwdC9zbGlkZU1hc3RlcnMvX3JlbHMvc2xpZGVNYXN0ZXIxLnhtbC5yZWxzUEsBAhQDFAAAAAgAG1IQXScth1DrAQAAWgcAABQAAAAAAAAAAAAAAIABSQwAAHBwdC90aGVtZS90aGVtZTEueG1sUEsFBgAAAAALAAsALgMAAGYOAAAAAA==';
+async function insertImageSet(name, images){
+  lastOp = Date.now();
+  // slide size (EMU->pt via API points already); default 13.333x7.5in = 960x540pt
+  let SW = 960, SH = 540, newSlideId = null;
+  await PowerPoint.run(async ctx => {
+    const sel = ctx.presentation.getSelectedSlides();
+    sel.load('items/id');
+    const slides = ctx.presentation.slides;
+    slides.load('items/id');
+    await ctx.sync();
+    const afterId = sel.items.length ? sel.items[0].id : (slides.items.length ? slides.items[slides.items.length-1].id : null);
+    const before = slides.items.map(x => x.id);
+    const opts = {formatting: 'UseDestinationTheme'};
+    if (afterId) opts.targetSlideId = afterId;
+    ctx.presentation.insertSlidesFromBase64(BLANK_PPTX_B64, opts);
+    await ctx.sync();
+    slides.load('items/id');
+    await ctx.sync();
+    newSlideId = slides.items.map(x => x.id).find(id => before.indexOf(id) === -1) || afterId;
+  });
+  // natural sizes
+  const dims = [];
+  for (const im of images){ dims.push(await rasterDims(im.mime, im.b64)); }
+  // layout: wrapped rows within a margin box
+  const M = 40, top0 = 96, gap = 14;
+  const boxW = SW - M*2, boxH = SH - top0 - M;
+  const n = images.length;
+  const cols = Math.min(n, Math.ceil(Math.sqrt(n * (boxW/Math.max(1,boxH)))));
+  const rows = Math.ceil(n / cols);
+  const cellW = (boxW - gap*(cols-1)) / cols;
+  const cellH = (boxH - gap*(rows-1)) / rows;
+  // headline textbox
+  await PowerPoint.run(async ctx => {
+    const sl = ctx.presentation.slides.getItem(newSlideId);
+    const tb = sl.shapes.addTextBox(name + ' images', {left: M, top: 30, width: boxW, height: 44});
+    try{
+      const tr = tb.textFrame.textRange;
+      tr.font.name = 'Arial'; tr.font.size = 24; tr.font.bold = true; tr.font.color = '#1C1B1A';
+    }catch(e){}
+    await ctx.sync();
+  });
+  // place images, aspect-fit into each cell
+  for (let i = 0; i < n; i++){
+    const r = Math.floor(i / cols), c = i % cols;
+    const d = dims[i]; const ar = (d.w>0 && d.h>0) ? d.w/d.h : 1;
+    let w = cellW, h = w/ar;
+    if (h > cellH){ h = cellH; w = h*ar; }
+    const cx = M + c*(cellW+gap) + cellW/2, cy = top0 + r*(cellH+gap) + cellH/2;
+    const left = Math.round(cx - w/2), top = Math.round(cy - h/2);
+    await new Promise(res => {
+      Office.context.document.setSelectedDataAsync(images[i].b64,
+        {coercionType: Office.CoercionType.Image, imageLeft: left, imageTop: top, imageWidth: Math.round(w), imageHeight: Math.round(h)},
+        rr => res(rr.status === Office.AsyncResultStatus.Succeeded));
+    });
+  }
+}
+
+async function insertTemplateB64(b64){
+  lastOp = Date.now();
+  await PowerPoint.run(async ctx => {
+    const sel = ctx.presentation.getSelectedSlides();
+    sel.load('items/id');
+    await ctx.sync();
+    const opts = {formatting: 'KeepSourceFormatting'};
+    if (sel.items.length) opts.targetSlideId = sel.items[0].id;
+    ctx.presentation.insertSlidesFromBase64(b64, opts);
+    await ctx.sync();
+  });
+  await refreshSlideMap();
+  drawNotes();
+}
+
+$('tplInsertBtn').addEventListener('click', async () => {
+  const name = $('tplSelect').value;
+  if (!name){ toast(t('tTplNone')); return; }
+  try{
+    const rec = await tplGet(name);
+    if (!rec){ toast(t('tTplNone')); return; }
+    await insertTemplateB64(rec.b64);
+    toast(t('tSlidesInserted'));
+  }catch(e){ toast(t('tSlidesFail')); }
+});
+
+$('tplAddBtn').addEventListener('click', () => {
+  $('slidepick').value = '';
+  $('slidepick').click();
+});
+$('slidepick').addEventListener('change', async e => {
+  const files = [...e.target.files];
+  if (!files.length) return;
+  let added = 0, lastName = '';
+  for (const file of files){
+    try{
+      const dataUrl = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(new Error('read'));
+        r.readAsDataURL(file);
+      });
+      const name = file.name.replace(/\.pptx$/i, '');
+      await tplPut({name: name, b64: dataUrl.split(',')[1], ts: Date.now()});
+      added++; lastName = name;
+    }catch(err){}
+  }
+  await drawTplMenu();
+  if (added === 1){ $('tplSelect').value = lastName; toast(t('tTplAdded')(lastName)); }
+  else if (added > 1) toast(t('tTplAddedMany')(added));
+  else toast(t('tSlidesFail'));
+});
+
+$('tplRemoveBtn').addEventListener('click', async () => {
+  const name = $('tplSelect').value;
+  if (!name){ toast(t('tTplNone')); return; }
+  try{
+    await tplDel(name);
+    await drawTplMenu();
+    toast(t('tTplRemoved'));
+  }catch(e){}
+});
+
+drawLibrary();
+
+/* ================= notes as text on slides ================= *//* ================= notes as text on slides ================= */
+function labelStyle(tb, color){
+  try{
+    tb.fill.setSolidColor('#FFF9E8');
+    const tr = tb.textFrame.textRange;
+    tr.font.name = 'Arial';
+    tr.font.size = 11;
+    tr.font.color = '#1C1B1A';
+    try{
+      tb.lineFormat.color = color || '#7867B9';
+      tb.lineFormat.weight = 2.25;
+      tb.lineFormat.visible = true;
+    }catch(e){}
+  }catch(e){}
+}
+async function setLabels(on){
+  labelsOn = on;
+  try{
+    await PowerPoint.run(async ctx => {
+      const slides = ctx.presentation.slides;
+      slides.load('items/id');
+      await ctx.sync();
+      const valid = {};
+      slides.items.forEach(sl => { valid[sl.id] = true; });
+      const bySlide = {};
+      notes.forEach(n => { if (valid[n.slideId]) (bySlide[n.slideId] = bySlide[n.slideId] || []).push(n); });
+      const loaded = {};
+      Object.keys(bySlide).forEach(id => {
+        loaded[id] = ctx.presentation.slides.getItem(id);
+        loaded[id].shapes.load('items/name,items/left,items/top');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(id => {
+        const items = loaded[id].shapes.items;
+        items.forEach(sh => { if (sh.name.indexOf('CriTickLabel-') === 0) sh.delete(); });
+        if (on){
+          bySlide[id].forEach(n => {
+            if (n.status !== 'open' || n.hidden || n.filterHidden) return;
+            const pin = items.find(x => x.name === 'CriTickPin-' + n.uid);
+            const px = pin ? pin.left : 14;
+            const py = pin ? pin.top : 14;
+            const tb = loaded[id].shapes.addTextBox(String(n.pinNum) + '. ' + n.text, {left: px + 30, top: Math.max(2, py - 2), width: 190, height: 36});
+            tb.name = 'CriTickLabel-' + n.uid;
+            labelStyle(tb, personColor(n));
+          });
+        }
+      });
+      await ctx.sync();
+    });
+    lastOp = Date.now();
+    $('labelsBtn').textContent = labelsOn ? t('labelsHide') : t('labelsShow');
+  }catch(e){ toast(t('tCantLabels')); }
+}
+$('labelsBtn').addEventListener('click', () => setLabels(!labelsOn));
+
+/* ================= copy for Claude ================= */
+async function resolveAnchors(openNotes){
+  const res = {};
+  const bySlide = {};
+  openNotes.forEach(n => {
+    if (!n.hidden && !n.filterHidden) (bySlide[n.slideId] = bySlide[n.slideId] || []).push(n);
+  });
+  if (!Object.keys(bySlide).length) return res;
+  try{
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const existing = {};
+      all.items.forEach(sl => { existing[sl.id] = true; });
+      const loaded = {};
+      Object.keys(bySlide).forEach(id => {
+        if (!existing[id]) return;
+        loaded[id] = ctx.presentation.slides.getItem(id);
+        loaded[id].shapes.load('items/name,items/left,items/top,items/width,items/height,items/type');
+      });
+      await ctx.sync();
+      Object.keys(loaded).forEach(id => {
+        const items = loaded[id].shapes.items;
+        bySlide[id].forEach(n => {
+          const pin = items.find(x => x.name === 'CriTickPin-' + n.uid);
+          if (!pin) return;
+          const cx = pin.left + pin.width / 2;
+          const cy = pin.top + pin.height / 2;
+          const hits = items.filter(x =>
+            x.name.indexOf('CriTickPin-') !== 0 &&
+            x.name.indexOf('CriTickLabel-') !== 0 &&
+            x.name.indexOf('CriTickCat-') !== 0 &&
+            x.name.indexOf('CriTickGhost-') !== 0 &&
+            cx >= x.left && cx <= x.left + x.width &&
+            cy >= x.top && cy <= x.top + x.height);
+          let obj = null, isGroup = false;
+          if (hits.length){
+            hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
+            obj = hits[0].name;
+            isGroup = hits[0].type === 'Group' || hits[0].name.indexOf('Group') === 0;
+          }
+          const W = 960, H = 540;
+          const col = cx < W / 3 ? 'left' : (cx > 2 * W / 3 ? 'right' : 'center');
+          const rowp = cy < H / 3 ? 'top' : (cy > 2 * H / 3 ? 'bottom' : 'middle');
+          res[n.uid] = {obj: obj, isGroup: isGroup, x: Math.round(cx), y: Math.round(cy), region: rowp + ' ' + col};
+        });
+      });
+    });
+  }catch(e){}
+  return res;
+}
+
+function claudePrompt(anchors){
+  const open = notes.filter(n => n.status === 'open');
+  const groups = {};
+  open.forEach(n => {
+    const p = slidePos[n.slideId] || 0;
+    (groups[p] = groups[p] || []).push(n);
+  });
+  let out = 'Please apply the following corrections to this presentation. ';
+  out += 'Go slide by slide and make only the changes listed. ';
+  out += 'Ignore any images or text boxes whose names start with CriTick \u2014 do not move, edit, or delete them. ';
+  out += 'Rules: (1) When zooming into or cropping an image, CROP it \u2014 never stretch it or change its aspect ratio. ';
+  out += '(2) A correction applies to the single element at the pin position given \u2014 when that element is inside a group, act only on that element, never on the whole group, unless the correction explicitly says otherwise. ';
+  out += '(3) Work fast: apply text and simple property changes directly \u2014 do not capture or visually inspect slides for them. ';
+  out += 'Only look at a slide visually when the correction requires visual judgment (cropping, alignment, color). ';
+  out += 'Do not visually re-verify after each edit; at most one quick check at the end, only for the visual corrections. ';
+  out += 'If a correction is ambiguous or impossible, skip it and say so at the end.\n';
+  Object.keys(groups).map(Number).sort((a,b)=>a-b).forEach(p => {
+    out += '\nSlide ' + (p || '(unknown)') + ':\n';
+    groups[p].forEach(n => {
+      const a = anchors[n.uid] || {};
+      let where = '';
+      const at = (a.x !== undefined) ? ' The pin is at about x=' + a.x + 'pt, y=' + a.y + 'pt from the slide top-left.' : '';
+      const groupish = nm => !!nm && nm.indexOf('Group') === 0;
+      if (n.shapeName && (groupish(n.shapeName) || a.isGroup) && at){
+        where = 'On the element inside the group "' + n.shapeName + '" that sits under the pin \u2014 NOT the whole group.' + at + ' Correction: ';
+      }
+      else if (n.shapeName){
+        where = 'On the object named "' + n.shapeName + '".' + at + ' Correction: ';
+      }
+      else if (a.obj && a.isGroup){
+        where = 'On the element inside the group "' + a.obj + '" that sits under the pin \u2014 NOT the whole group.' + at + ' Correction: ';
+      }
+      else if (a.obj){
+        where = 'On the object named "' + a.obj + '" (the pin sits on it).' + at + ' Correction: ';
+      }
+      else if (a.region){
+        where = 'In the ' + a.region + ' area of the slide' + (at ? ' \u2014' + at : '.') + ' Correction: ';
+      }
+      out += '- ' + where + n.text + '\n';
+    });
+  });
+  out += '\nWhen finished, list what you changed and anything you skipped.';
+  return out;
+}
+$('copyClaude').addEventListener('click', async () => {
+  const open = notes.filter(n => n.status === 'open');
+  if (!open.length){ toast(t('tNothingOpen')); return; }
+  await refreshSlideMap();
+  const anchors = await resolveAnchors(open);
+  const box = $('claudebox'), ta = $('claudetext');
+  ta.value = claudePrompt(anchors);
+  $('claudehint').textContent = t('copyHint');
+  box.classList.add('on');
+  ta.focus();
+  ta.select();
+  try{ navigator.clipboard.writeText(ta.value).catch(()=>{}); }catch(e){}
+});
+$('claudetext').addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('claudebox').classList.remove('on');
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c'){
+    setTimeout(() => { $('claudebox').classList.remove('on'); toast(t('tClaudeCopied')); }, 150);
+  }
+});
+$('claudebox').addEventListener('click', e => {
+  if (e.target === $('claudebox')) $('claudebox').classList.remove('on');
+});
+
+/* ================= clean slate ================= */
+let cleanArm = 0;
+$('cleanBtn').addEventListener('click', async () => {
+  if (!ready) return;
+  const btn = $('cleanBtn');
+  if (Date.now() - cleanArm > 4000){
+    cleanArm = Date.now();
+    btn.classList.add('arm');
+    btn.textContent = t('cleanConfirm');
+    setTimeout(() => {
+      if (Date.now() - cleanArm >= 3900){
+        btn.classList.remove('arm');
+        btn.textContent = t('cleanSlate');
+      }
+    }, 4200);
+    return;
+  }
+  cleanArm = 0;
+  btn.classList.remove('arm');
+  btn.textContent = t('cleanSlate');
+  try{
+    // remove every CriTick object from every slide
+    lastOp = Date.now();
+    await PowerPoint.run(async ctx => {
+      const all = ctx.presentation.slides;
+      all.load('items/id');
+      await ctx.sync();
+      const refs = [];
+      all.items.forEach(sl => {
+        const r = ctx.presentation.slides.getItem(sl.id);
+        r.shapes.load('items/name');
+        refs.push(r);
+      });
+      await ctx.sync();
+      refs.forEach(r => {
+        r.shapes.items.forEach(sh => {
+          if (((sh.name || '')).indexOf('CriTick') === 0) sh.delete();
+        });
+      });
+      await ctx.sync();
+    });
+    // wipe everything stored in the file
+    try{
+      const st = Office.context.document.settings;
+      st.remove(KEY);
+      st.remove(KEY_PEOPLE);
+      st.remove(KEY_LAYOUTS);
+      st.remove(KEY_BINDINGS);
+      st.saveAsync(()=>{});
+    }catch(e){}
+    // reset in-pane state
+    notes = [];
+    people = {};
+    Object.keys(ROSTER).forEach(n => { people[n] = ROSTER[n]; });
+    layouts = {};
+    bindings = [];
+    undoStack = [];
+    filterP = '';
+    selPerson = '';
+    labelsOn = false;
+    $('filterPerson').value = '';
+    drawPeople();
+    drawCats();
+    drawMeBar();
+    drawNotes();
+    $('labelsBtn').textContent = t('labelsShow');
+    $('savedflag').textContent = '';
+    toast(t('tCleaned'));
+  }catch(e){ toast(t('tLayoutFail')); }
+});
+
+/* ================= toast ================= */
+let toastT = null;
+function toast(msg){
+  const t2 = $('toast'); t2.textContent = msg; t2.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(()=>t2.classList.remove('on'), 2200);
+}
+</script>
+</body>
+</html>
