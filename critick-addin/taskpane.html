@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- BUILD-0816-1105 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CriTick BUILD-0816-1105</title>
+<title>CriTick</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
@@ -329,7 +328,7 @@ const STR = {
     secSets: 'Image sets',
     libSearchPh: 'Search…',
     libChoose: 'Choose…',
-    setAddTip: 'Pick a folder of images once (Cmd+A inside it) — saved on this computer only',
+    setAddTip: 'Pick image files (Cmd+A to select many) — saved on this computer only',
     setAdd: '+ Add set…',
     tSetName: 'Name this image set:',
     tSetAdded: n => 'Set added: ' + n,
@@ -1893,33 +1892,22 @@ function bindLibSearches(){
   ['iconSearch','logoSearch','setSearch','tplSearch'].forEach(id => { const e = $(id); if (e) e.placeholder = t('libSearchPh'); });
 }
 
-/* ================= image sets (folder of images -> new slide) ================= */
-function setsDB(){
-  return new Promise((res, rej) => {
-    const rq = indexedDB.open('critick-imagesets', 1);
-    rq.onupgradeneeded = () => rq.result.createObjectStore('set', {keyPath: 'name'});
-    rq.onsuccess = () => res(rq.result);
-    rq.onerror = () => rej(rq.error);
-  });
+/* ================= image sets (multi-select images -> new slide) =================
+   Stored exactly like icons/logos: each image is its own record in one IndexedDB,
+   tagged with its set name. No giant records. Reuses assetDB/assetPut/assetAll/assetDel. */
+const SETS_DB = 'critick-sets';
+const SETS_STORE = 'setimg';
+
+async function setNames(){
+  const all = await assetAll(SETS_DB, SETS_STORE);
+  const names = {};
+  all.forEach(r => { names[r.set] = (names[r.set] || 0) + 1; });
+  return names;
 }
-function setsOp(mode, fn){
-  return setsDB().then(db => new Promise((res, rej) => {
-    const tx = db.transaction('set', mode);
-    const out = fn(tx.objectStore('set'));
-    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
-    tx.onerror = () => rej(tx.error);
-  }));
+async function setImages(name){
+  const all = await assetAll(SETS_DB, SETS_STORE);
+  return all.filter(r => r.set === name).sort((a,b) => (a.idx||0) - (b.idx||0));
 }
-const setsPut = rec => setsOp('readwrite', st => st.put(rec));
-const setsDel = name => setsOp('readwrite', st => st.delete(name));
-const setsAll = () => setsDB().then(db => new Promise((res, rej) => {
-  const rq = db.transaction('set').objectStore('set').getAll();
-  rq.onsuccess = () => res(rq.result || []); rq.onerror = () => rej(rq.error);
-}));
-const setsGet = name => setsDB().then(db => new Promise((res, rej) => {
-  const rq = db.transaction('set').objectStore('set').get(name);
-  rq.onsuccess = () => res(rq.result || null); rq.onerror = () => rej(rq.error);
-}));
 
 async function drawSetMenu(){
   const sel = $('setSelect'); if (!sel) return;
@@ -1928,58 +1916,59 @@ async function drawSetMenu(){
   sel.innerHTML = '';
   const o0 = document.createElement('option'); o0.value = ''; o0.textContent = t('libChoose'); sel.appendChild(o0);
   try{
-    let list = await setsAll();
-    list.sort((a, b) => a.name.localeCompare(b.name, undefined, {sensitivity: 'base'}));
-    if (q) list = list.filter(r => r.name.toLowerCase().indexOf(q) !== -1);
-    list.forEach(r => {
+    const names = await setNames();
+    let list = Object.keys(names).sort((a, b) => a.localeCompare(b, undefined, {sensitivity: 'base'}));
+    if (q) list = list.filter(n => n.toLowerCase().indexOf(q) !== -1);
+    list.forEach(n => {
       const o = document.createElement('option');
-      o.value = r.name; o.textContent = r.name + ' (' + (r.images ? r.images.length : 0) + ')';
+      o.value = n; o.textContent = n + ' (' + names[n] + ')';
       sel.appendChild(o);
     });
     if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
   }catch(e){}
 }
 
-let pendingSetName = null;
 $('setAddBtn').addEventListener('click', () => { pickKind = 'set'; const p = $('assetpick'); p.value = ''; p.click(); });
 
 async function ingestSet(files){
   const imgs = files.filter(f => /image\/(png|jpe?g)/i.test(f.type) || /\.(png|jpe?g)$/i.test(f.name));
   if (!imgs.length){ toast(t('tSetEmpty')); return; }
-  // default name from the common folder if available, else ask
-  let guess = '';
-  const wp = imgs[0].webkitRelativePath || '';
-  if (wp && wp.indexOf('/') !== -1) guess = wp.split('/')[0];
-  const name = (prompt(t('tSetName'), guess) || '').trim();
+  const name = (prompt(t('tSetName'), '') || '').trim();
   if (!name) return;
-  const stored = [];
+  let idx = 0, ok = 0, lastErr = '';
   for (const f of imgs){
     try{
       const a = await readAsset(f);
-      if (!a.isSvg) stored.push({b64: a.b64, mime: a.mime});
-    }catch(e){}
+      if (a.isSvg) continue;
+      await assetPut(SETS_DB, SETS_STORE, {name: name + '||' + idx, set: name, idx: idx, b64: a.b64, mime: a.mime});
+      idx++; ok++;
+    }catch(e){ lastErr = (e && e.message) || String(e); }
   }
-  if (!stored.length){ toast(t('tSetEmpty')); return; }
-  await setsPut({name: name, images: stored, ts: Date.now()});
   await drawSetMenu();
-  $('setSelect').value = name;
-  toast(t('tSetAdded')(name));
+  const sel = $('setSelect'); if (sel) sel.value = name;
+  if (ok) toast(t('tSetAdded')(name));
+  else toast('set add failed: ' + (lastErr || 'no images'));
 }
 
 $('setRemoveBtn').addEventListener('click', async () => {
   const name = $('setSelect').value;
   if (!name){ toast(t('tSetNone')); return; }
-  try{ await setsDel(name); await drawSetMenu(); toast(t('tAssetRemoved')); }catch(e){}
+  try{
+    const recs = await setImages(name);
+    for (const r of recs) await assetDel(SETS_DB, SETS_STORE, r.name);
+    await drawSetMenu();
+    toast(t('tAssetRemoved'));
+  }catch(e){}
 });
 
 $('setInsertBtn').addEventListener('click', async () => {
   const name = $('setSelect').value;
   if (!name){ toast(t('tSetNone')); return; }
   try{
-    const rec = await setsGet(name);
-    if (!rec || !rec.images || !rec.images.length){ toast(t('tSetNone')); return; }
-    await insertImageSet(name, rec.images);
-    toast(t('tSetInserted')(rec.images.length));
+    const recs = await setImages(name);
+    if (!recs.length){ toast(t('tSetNone')); return; }
+    await insertImageSet(name, recs.map(r => ({b64: r.b64, mime: r.mime})));
+    toast(t('tSetInserted')(recs.length));
   }catch(e){ toast(t('tImgFail')); }
 });
 
@@ -2024,27 +2013,22 @@ $('assetpick').addEventListener('change', async e => {
   if (!files.length) return;
   if (pickKind === 'set'){ await ingestSet(files); return; }
   const cfg = LIB[pickKind];
-  let added = 0, lastName = '', lastErr = '', stage = 'start';
+  let added = 0, lastName = '';
   for (const file of files){
     try{
-      stage = 'read';
       const a = await readAsset(file);
       const name = file.name.replace(/\.[^.]+$/, '');
       const rec = {name: name, ts: Date.now(), isSvg: !!a.isSvg};
       if (a.isSvg) rec.text = a.text; else { rec.b64 = a.b64; rec.mime = a.mime; }
-      stage = 'store';
       await assetPut(cfg.db, cfg.store, rec);
-      stage = 'verify';
-      const back = await assetGet(cfg.db, cfg.store, name);
-      if (!back) throw new Error('stored but not found on read-back');
       added++; lastName = name;
-    }catch(err){ lastErr = 'at ' + stage + ': ' + ((err && err.message) || String(err)); }
+    }catch(err){}
   }
   await drawKindMenu(pickKind);
   const sel = $(cfg.sel);
   if (added === 1){ sel.value = lastName; toast(t('tAssetAdded')(lastName)); }
   else if (added > 1) toast(t('tAssetAddedMany')(added));
-  else toast('FAIL ' + lastErr);
+  else toast(t('tAssetFail'));
 });
 
 /* icons */
