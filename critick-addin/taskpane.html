@@ -1939,7 +1939,7 @@ async function drawSetMenu(){
     if (q) list = list.filter(n => n.toLowerCase().indexOf(q) !== -1);
     list.forEach(n => {
       const o = document.createElement('option');
-      o.value = n; o.textContent = n + ' (' + names[n] + ')';
+      o.value = n; o.textContent = n;
       sel.appendChild(o);
     });
     if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
