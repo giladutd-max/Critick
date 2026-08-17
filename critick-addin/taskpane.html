@@ -18,7 +18,7 @@
 
   header{padding:12px 14px 8px; background:var(--panel);}
   header{text-align:center;}
-  #brandfull{height:96px; width:auto; display:block; margin:0 auto;}
+  #brandfull{height:76px; width:auto; display:block; margin:0 auto 2px;}
   header .brand{font-family:'Baloo 2','Heebo',sans-serif; font-weight:800; font-size:17px; display:flex; align-items:center; justify-content:center; gap:7px;}
   header .sub{text-align:center;}
   header .brand span{color:var(--pin);}
@@ -130,11 +130,9 @@
 </head>
 <body>
 
-<div id="errbar" style="display:none;background:#C0392B;color:#fff;padding:10px;font:12px/1.4 monospace;white-space:pre-wrap;word-break:break-word;"></div>
 <header>
-  <img id="brandfull" src="assets/logo-full.png" alt="CriTick" onerror="this.style.display='none'; document.getElementById('brandtext').style.display='flex';">
-  <div class="brand" id="brandtext" style="display:none;">Slide<span>Kick</span></div>
-  <div class="sub" id="sub"></div>
+  <img id="brandfull" src="assets/logo-full.png" alt="CriTick">
+  <div class="brand" id="brandtext">Cri<span>Tick</span></div>
 </header>
 
 
@@ -208,18 +206,7 @@
 <div id="claudebox"><div class="inner"><textarea id="claudetext" readonly></textarea><div class="hint" id="claudehint"></div></div></div>
 
 <div id="toast"></div>
-<script>
-window.addEventListener('error', function(e){
-  var b=document.getElementById('errbar'); if(!b)return;
-  b.style.display='block';
-  b.textContent='ERROR: '+(e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+(e.lineno||'')+':'+(e.colno||'');
-});
-window.addEventListener('unhandledrejection', function(e){
-  var b=document.getElementById('errbar'); if(!b)return;
-  b.style.display='block';
-  var r=e.reason; b.textContent='PROMISE ERROR: '+((r&&r.message)||r||'unknown');
-});
-</script>
+
 
 <script>
 const KEY = 'critick-notes';
@@ -253,7 +240,6 @@ const $ = id => document.getElementById(id) || __sink;
 /* ================= i18n ================= */
 const STR = {
   en: {
-    sub: '"I\'ve got your deck."',
     notPpt: 'CriTick runs inside PowerPoint',
     anchorDefault: 'A numbered pin will be added to the slide — drag it into place',
     anchorAttached: 'Attached to: ',
@@ -386,7 +372,6 @@ const STR = {
 function t(key){ return STR[lang][key]; }
 
 function applyLang(){
-  $('sub').textContent = t('sub');
   $('noteinput').placeholder = t('placeholder');
   $('filterLabel').textContent = t('filterLabel');
   $('clearPins').textContent = t('clearPins');
